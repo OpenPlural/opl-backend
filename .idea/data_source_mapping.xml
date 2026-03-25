@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/migrations/0001-create-schema.sql" value="c40a9d8c-e401-45c4-8a86-2fb107ee6bf8" />
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/c40a9d8c-e401-45c4-8a86-2fb107ee6bf8/console.sql" value="c40a9d8c-e401-45c4-8a86-2fb107ee6bf8" />
+  </component>
+</project>

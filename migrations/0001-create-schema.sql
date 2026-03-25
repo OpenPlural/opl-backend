@@ -1,0 +1,194 @@
+# Auth
+CREATE TABLE User
+(
+    ID          INTEGER            NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    Name        VARCHAR(50)        NOT NULL UNIQUE,
+    Email       VARCHAR(255)                DEFAULT NULL UNIQUE,
+    Password    VARCHAR(255)       NOT NULL,
+    CreatedAt   TIMESTAMP          NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    AvatarUrl   VARCHAR(255)                DEFAULT NULL,
+    Description TEXT                        DEFAULT NULL,
+    Color       MEDIUMINT UNSIGNED NOT NULL DEFAULT 16777215,
+    System      BOOLEAN            NOT NULL,
+    FriendCode  BINARY(16)         NOT NULL DEFAULT UNHEX(SYS_GUID()) UNIQUE
+);
+
+CREATE TABLE Session
+(
+    ID        INTEGER      NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    UserId    INTEGER      NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    Token     VARCHAR(255) NOT NULL UNIQUE,
+    Name      VARCHAR(255) NOT NULL,
+    CreatedAt TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    ExpiresAt TIMESTAMP    NOT NULL DEFAULT DATE_ADD(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+);
+
+# Members
+CREATE TABLE Member
+(
+    ID          INTEGER            NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    UserId      INTEGER            NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    Name        VARCHAR(255)       NOT NULL,
+    Pronouns    VARCHAR(255)                DEFAULT NULL,
+    AvatarUrl   VARCHAR(255)                DEFAULT NULL,
+    Description TEXT                        DEFAULT NULL,
+    Color       MEDIUMINT UNSIGNED NOT NULL DEFAULT 16777215,
+    CreatedAt   TIMESTAMP          NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    UpdatedAt   TIMESTAMP          NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
+    Archived    BOOLEAN            NOT NULL DEFAULT FALSE,
+    Custom      BOOLEAN            NOT NULL DEFAULT FALSE
+);
+
+# Friends
+CREATE TABLE Friend
+(
+    Friend1 INTEGER NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    Friend2 INTEGER NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    PRIMARY KEY (Friend1, Friend2)
+);
+
+CREATE TABLE FriendRequest
+(
+    FromUser INTEGER NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    ToUser   INTEGER NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    PRIMARY KEY (FromUser, ToUser)
+);
+
+CREATE TABLE FriendSettings
+(
+    UserId          INTEGER NOT NULL PRIMARY KEY REFERENCES User (id) ON DELETE CASCADE,
+    FriendId        INTEGER NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    PermissionLevel TINYINT NOT NULL DEFAULT FALSE,
+    NotifyMe        BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+# Privacy Buckets
+CREATE TABLE PrivacyBucket
+(
+    ID          INTEGER            NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    UserId      INTEGER            NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    Name        VARCHAR(255)       NOT NULL,
+    Description TEXT                        DEFAULT NULL,
+    Emoji       VARCHAR(3)                  DEFAULT NULL,
+    Color       MEDIUMINT UNSIGNED NOT NULL DEFAULT 16777215
+);
+
+CREATE TABLE MemberPrivacyBucket
+(
+    MemberId INTEGER NOT NULL REFERENCES Member (id) ON DELETE CASCADE,
+    BucketId INTEGER NOT NULL REFERENCES PrivacyBucket (id) ON DELETE CASCADE,
+    PRIMARY KEY (MemberId, BucketId)
+);
+
+CREATE TABLE FriendPrivacyBucket
+(
+    UserId   INTEGER NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    Friend   INTEGER NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    BucketId INTEGER NOT NULL REFERENCES PrivacyBucket (id) ON DELETE CASCADE,
+    PRIMARY KEY (UserId, Friend, BucketId)
+);
+
+# Custom Fields
+CREATE TABLE Field
+(
+    ID     INTEGER      NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    UserId INTEGER      NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    Name   VARCHAR(255) NOT NULL,
+    Type   TINYINT      NOT NULL
+);
+
+CREATE TABLE MemberField
+(
+    MemberId INTEGER NOT NULL REFERENCES Member (id) ON DELETE CASCADE,
+    FieldId  INTEGER NOT NULL REFERENCES Field (id) ON DELETE CASCADE,
+    Value    TEXT    NOT NULL,
+    PRIMARY KEY (MemberId, FieldId)
+);
+
+# Folders
+CREATE TABLE Folder
+(
+    ID          INTEGER            NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    UserId      INTEGER            NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    ParentId    INTEGER                     DEFAULT NULL REFERENCES Folder (id) ON DELETE CASCADE,
+    Name        VARCHAR(255)       NOT NULL,
+    Description TEXT                        DEFAULT NULL,
+    Emoji       VARCHAR(3)                  DEFAULT NULL,
+    Color       MEDIUMINT UNSIGNED NOT NULL DEFAULT 16777215,
+    CreatedAt   TIMESTAMP          NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    UpdatedAt   TIMESTAMP          NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP()
+);
+
+CREATE TABLE MemberFolder
+(
+    MemberId INTEGER NOT NULL REFERENCES Member (id) ON DELETE CASCADE,
+    FolderId INTEGER NOT NULL REFERENCES Folder (id) ON DELETE CASCADE,
+    PRIMARY KEY (MemberId, FolderId)
+);
+
+# Message Board
+CREATE TABLE MessageBoard
+(
+    ID        INTEGER   NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    MemberId  INTEGER   NOT NULL REFERENCES Member (id) ON DELETE CASCADE,
+    AuthorId  INTEGER   NOT NULL REFERENCES Member (id) ON DELETE CASCADE,
+    Content   TEXT      NOT NULL,
+    CreatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP()
+);
+
+# Front
+CREATE TABLE Front
+(
+    ID        BIGINT    NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    MemberId  INTEGER   NOT NULL REFERENCES Member (id) ON DELETE CASCADE,
+    UserId    INTEGER   NOT NULL REFERENCES User (id) ON DELETE CASCADE, # This is not technically needed since members hold the userId already, but this query has to run quite often and this way we can skip a join
+    StartedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    EndedAt   TIMESTAMP          DEFAULT NULL,
+    Comment   VARCHAR(255)       DEFAULT NULL
+);
+
+# Polls
+CREATE TABLE Poll
+(
+    ID          INTEGER   NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    UserId      INTEGER   NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    Name        TEXT      NOT NULL,
+    Description TEXT DEFAULT NULL,
+    Abstain     BOOLEAN   NOT NULL,
+    Veto        BOOLEAN   NOT NULL,
+    ExpiresAt   TIMESTAMP NOT NULL
+);
+
+CREATE TABLE PollVote
+(
+    PollId   INTEGER NOT NULL REFERENCES Poll (id) ON DELETE CASCADE,
+    MemberId INTEGER NOT NULL REFERENCES Member (id) ON DELETE CASCADE,
+    Vote     TINYINT DEFAULT NULL,
+    PRIMARY KEY (PollId, MemberId)
+);
+
+# Custom Polls
+CREATE TABLE CustomPoll
+(
+    ID          INTEGER   NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    UserId      INTEGER   NOT NULL REFERENCES User (id) ON DELETE CASCADE,
+    Name        TEXT      NOT NULL,
+    Description TEXT DEFAULT NULL,
+    ExpiresAt   TIMESTAMP NOT NULL
+);
+
+CREATE TABLE CustomPollOption
+(
+    ID     INTEGER            NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    PollId INTEGER            NOT NULL REFERENCES Poll (id) ON DELETE CASCADE,
+    Name   VARCHAR(255)       NOT NULL,
+    Color  MEDIUMINT UNSIGNED NOT NULL DEFAULT 16777215
+);
+
+CREATE TABLE CustomPollVote
+(
+    PollId   INTEGER NOT NULL REFERENCES CustomPoll (id) ON DELETE CASCADE,
+    MemberId INTEGER NOT NULL REFERENCES Member (id) ON DELETE CASCADE,
+    OptionId INTEGER NOT NULL REFERENCES CustomPollOption (id) ON DELETE CASCADE,
+    PRIMARY KEY (PollId, MemberId, OptionId)
+);

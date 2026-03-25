@@ -1,0 +1,35 @@
+[package]
+name = "opl-backend"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3"
+
+[dependencies]
+actix-web = "*"
+actix-web-httpauth = "*"
+serde = "*"
+serde_json = "*"
+argon2 = "*"
+rand = "*"
+thiserror = "*"
+strum_macros = "*"
+
+[dependencies.uuid]
+version = "*"
+features = ["v4"]
+
+[dependencies.anyhow]
+version = "*"
+features = ["backtrace"]
+
+[dependencies.chrono]
+version = "*"
+features = ["serde"]
+
+[dependencies.sqlx]
+version = "*"
+features = ["mysql", "runtime-tokio", "chrono", "uuid"]
+
+[dependencies.tokio]
+version = "*"
+features = ["macros", "rt-multi-thread"]
