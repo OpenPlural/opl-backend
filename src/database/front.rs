@@ -94,7 +94,7 @@ pub async fn add_front_entry_full(pool: &DatabasePool, user_id: UserId, member_i
 }
 
 pub async fn edit_front_comment(pool: &DatabasePool, entry_id: FrontEntryId, comment: &Option<String>) -> DatabaseResult<()> {
-    query("UPDATE Front SET Comment = ? WHERE MemberId = ?")
+    query("UPDATE Front SET Comment = ? WHERE ID = ?")
         .bind(comment)
         .bind(entry_id)
         .execute(pool.as_ref())
