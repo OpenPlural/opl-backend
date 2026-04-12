@@ -15,7 +15,9 @@ pub async fn get_self_user(req: HttpRequest, data: Data<AppState>, query: Query<
 
     let token: RequestToken = get_token(&req).unwrap();
     if let Some(mut res) = crate::database::user::get_user_by_id(&data.pool, token.user_id, true).await.map_err(to_web_error)? {
-        extend_session(&data.pool, token.token_id).await.map_err(to_web_error)?;
+        if token.admin {
+            extend_session(&data.pool, token.token_id).await.map_err(to_web_error)?;
+        }
 
         if query.full.unwrap_or(false) {
             res.folders = Some(crate::database::folder::get_folders(&data.pool, token.user_id).await.map_err(to_web_error)?);
