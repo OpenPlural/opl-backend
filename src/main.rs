@@ -23,6 +23,7 @@ use crate::web::api::folder::{create_folder, delete_folder, edit_folder, get_fol
 use crate::web::api::friend::{accept_friend_request, cancel_friend_request, decline_friend_request, get_friends, get_incoming_friend_requests, get_outgoing_friend_requests, get_settings, send_friend_request, unfriend, update_settings};
 use crate::web::api::front::{add_front_entry, front, front_comment, front_start_time, unfront};
 use crate::web::api::member::{create_member, delete_member, edit_member, edit_member_folders, get_member, get_members};
+use crate::web::api::session::{get_sessions, invalidate_current_session, invalidate_session};
 use crate::web::api::user::{get_front, get_self_user};
 
 pub struct AppState {
@@ -96,6 +97,12 @@ async fn main() -> std::io::Result<()> {
                             .service(delete_member)
                             .service(edit_member)
                             .service(edit_member_folders)
+                    )
+                    .service(
+                        scope("/session")
+                            .service(get_sessions)
+                            .service(invalidate_session)
+                            .service(invalidate_current_session)
                     )
                     .service(
                         scope("/user")

@@ -1,6 +1,7 @@
 use sqlx::{query, Row};
 use crate::database::{DatabasePool, DatabaseResult};
 use crate::middleware::{RequestToken, TokenId};
+use crate::model::session::SessionToken;
 use crate::model::user::UserId;
 
 pub async fn check_session(pool: &DatabasePool, session_id: &str) -> DatabaseResult<Option<RequestToken>> {
@@ -27,6 +28,30 @@ pub async fn check_session(pool: &DatabasePool, session_id: &str) -> DatabaseRes
 pub async fn extend_session(pool: &DatabasePool, token_id: TokenId) -> DatabaseResult<()> {
     query("UPDATE Session SET ExpiresAt = DATE_ADD(NOW(), INTERVAL 7 DAY) WHERE ID = ?")
         .bind(token_id)
+        .execute(pool.as_ref())
+        .await?;
+
+    Ok(())
+}
+
+pub async fn get_sessions(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<SessionToken>> {
+    let sessions = query("SELECT ID, Name, CreatedAt, ExpiresAt FROM Session WHERE UserId = ?")
+        .bind(user_id)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+    Ok(sessions.into_iter().map(|row| SessionToken {
+        id: row.get(0),
+        name: row.get(1),
+        created_at: row.get(2),
+        expires_at: row.get(3)
+    }).collect())
+}
+
+pub async fn delete_session(pool: &DatabasePool, user_id: UserId, token_id: TokenId) -> DatabaseResult<()> {
+    query("DELETE FROM Session WHERE ID = ? AND UserId = ?")
+        .bind(token_id)
+        .bind(user_id)
         .execute(pool.as_ref())
         .await?;
 
