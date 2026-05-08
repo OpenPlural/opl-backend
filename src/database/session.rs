@@ -11,8 +11,8 @@ pub async fn check_session(pool: &DatabasePool, session_id: &str) -> DatabaseRes
         .await?;
 
     if let Some(session) = session {
-        let token_id: TokenId = session.get(0);
-        let user_id: UserId = session.get(1);
+        let token_id: TokenId = session.get("ID");
+        let user_id: UserId = session.get("UserId");
 
         Ok(Some(RequestToken {
             token_id,
@@ -41,10 +41,10 @@ pub async fn get_sessions(pool: &DatabasePool, user_id: UserId) -> DatabaseResul
         .await?;
 
     Ok(sessions.into_iter().map(|row| SessionToken {
-        id: row.get(0),
-        name: row.get(1),
-        created_at: row.get(2),
-        expires_at: row.get(3)
+        id: row.get("ID"),
+        name: row.get("Name"),
+        created_at: row.get("CreatedAt"),
+        expires_at: row.get("ExpiresAt")
     }).collect())
 }
 

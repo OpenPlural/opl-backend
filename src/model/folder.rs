@@ -2,11 +2,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use crate::model::user::UserId;
 
-pub type FolderId = i32;
+pub type FolderId = i64;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Folder {
-    #[serde(skip_deserializing)]
     pub id: FolderId,
     #[serde(skip)]
     pub user_id: UserId,

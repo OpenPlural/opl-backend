@@ -3,11 +3,10 @@ use crate::model::user::UserId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-pub type MemberId = i32;
+pub type MemberId = i64;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Member {
-    #[serde(skip_deserializing)]
     pub id: MemberId,
     #[serde(rename = "userId", skip_deserializing)]
     pub user_id: UserId,

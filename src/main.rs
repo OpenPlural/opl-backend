@@ -8,8 +8,16 @@ mod error;
 mod middleware;
 
 use crate::database::DatabasePool;
+use crate::middleware::bearer_validation;
+use crate::web::api::folder::{create_folder, delete_folder, edit_folder, get_folder, get_folders};
+use crate::web::api::friend::{accept_friend_request, cancel_friend_request, decline_friend_request, get_friends, get_incoming_friend_requests, get_outgoing_friend_requests, get_settings, send_friend_request, unfriend, update_settings};
+use crate::web::api::front::{add_front_entry, delete_front_entry, edit_front_entry};
+use crate::web::api::member::{create_member, delete_member, edit_member, edit_member_folders, get_member, get_members};
+use crate::web::api::session::{get_sessions, invalidate_current_session, invalidate_session};
+use crate::web::api::user::{get_front, get_self_user};
 use crate::web::auth::{login, register};
 use crate::web::version::{app_update, version};
+use actix_web::dev::Service;
 use actix_web::web::{scope, Data};
 use actix_web::{App, HttpServer};
 use actix_web_httpauth::middleware::HttpAuthentication;
@@ -17,14 +25,6 @@ use sqlx::mysql::MySqlConnectOptions;
 use sqlx::MySqlPool;
 use std::env::var;
 use std::sync::Arc;
-use actix_web::dev::Service;
-use crate::middleware::bearer_validation;
-use crate::web::api::folder::{create_folder, delete_folder, edit_folder, get_folder, get_folders};
-use crate::web::api::friend::{accept_friend_request, cancel_friend_request, decline_friend_request, get_friends, get_incoming_friend_requests, get_outgoing_friend_requests, get_settings, send_friend_request, unfriend, update_settings};
-use crate::web::api::front::{add_front_entry, front, front_comment, front_start_time, unfront};
-use crate::web::api::member::{create_member, delete_member, edit_member, edit_member_folders, get_member, get_members};
-use crate::web::api::session::{get_sessions, invalidate_current_session, invalidate_session};
-use crate::web::api::user::{get_front, get_self_user};
 
 pub struct AppState {
     pub pool: DatabasePool
@@ -84,10 +84,8 @@ async fn main() -> std::io::Result<()> {
                     .service(
                         scope("/front")
                             .service(add_front_entry)
-                            .service(front)
-                            .service(unfront)
-                            .service(front_comment)
-                            .service(front_start_time)
+                            .service(delete_front_entry)
+                            .service(edit_front_entry)
                     )
                     .service(
                         scope("/member")

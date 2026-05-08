@@ -5,49 +5,37 @@ use sqlx::mysql::MySqlRow;
 use sqlx::{query, Row};
 
 pub async fn get_folders(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<Folder>> {
-    const ID_IDX: usize = 8;
-
-    let folders = query("SELECT UserId, ParentId, Name, Description, Emoji, Color, CreatedAt, UpdatedAt, ID FROM Folder WHERE UserId = ?")
+    let folders = query("SELECT ID, UserId, ParentId, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE UserId = ?")
         .bind(user_id)
         .fetch_all(pool.as_ref())
         .await?;
 
-    Ok(folders.into_iter().map(|row| {
-        let id: FolderId = row.get(ID_IDX);
-        folder(row, id)
-    }).collect())
+    Ok(folders.into_iter().map(folder).collect())
 }
 
-pub async fn get_folder_by_id(pool: &DatabasePool, folder_id: FolderId) -> DatabaseResult<Option<Folder>> {
-    let res = query("SELECT UserId, ParentId,Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE ID = ?")
+pub async fn get_folder_by_id(pool: &DatabasePool, folder_id: FolderId, user_id: UserId) -> DatabaseResult<Option<Folder>> {
+    let res = query("SELECT ID, UserId, ParentId, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE ID = ? AND UserId = ?")
         .bind(folder_id)
+        .bind(user_id)
         .fetch_optional(pool.as_ref())
         .await?;
 
-    Ok(res.map(|row| folder(row, folder_id)))
+    Ok(res.map(folder))
 }
 
-pub async fn get_folder_user_id(pool: &DatabasePool, folder_id: FolderId) -> DatabaseResult<UserId> {
-    let user_id = query("SELECT UserId FROM Folder WHERE ID = ?")
-        .bind(folder_id)
-        .fetch_one(pool.as_ref())
-        .await?;
-
-    Ok(user_id.get(0))
-}
-
-pub async fn create_folder(pool: &DatabasePool, user_id: UserId, folder: &Folder) -> DatabaseResult<FolderId> {
-    let res = query("INSERT INTO Folder (UserId, ParentId, Name, Description, Emoji, Color) VALUES (?, ?, ?, ?, ?, ?) RETURNING ID")
-        .bind(user_id)
+pub async fn create_folder(pool: &DatabasePool, folder: &Folder) -> DatabaseResult<()> {
+    query("INSERT INTO Folder (ID, UserId, ParentId, Name, Description, Emoji, Color) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .bind(folder.id)
+        .bind(folder.user_id)
         .bind(folder.parent_id)
         .bind(&folder.name)
         .bind(&folder.description)
         .bind(&folder.emoji)
         .bind(folder.color)
-        .fetch_one(pool.as_ref())
+        .execute(pool.as_ref())
         .await?;
 
-    Ok(res.get(0))
+    Ok(())
 }
 
 pub async fn delete_folder(pool: &DatabasePool, folder_id: FolderId, user_id: UserId) -> DatabaseResult<()> {
@@ -75,15 +63,16 @@ pub async fn edit_folder(pool: &DatabasePool, folder: &Folder) -> DatabaseResult
     Ok(())
 }
 
-fn folder(row: MySqlRow, id: FolderId) -> Folder {
-    let user_id = row.get(0);
-    let parent_id = row.get(1);
-    let name = row.get(2);
-    let description = row.get(3);
-    let emoji = row.get(4);
-    let color = row.get(5);
-    let created_at = row.get(6);
-    let updated_at = row.get(7);
+fn folder(row: MySqlRow) -> Folder {
+    let id = row.get("ID");
+    let user_id = row.get("UserId");
+    let parent_id = row.get("ParentId");
+    let name = row.get("Name");
+    let description = row.get("Description");
+    let emoji = row.get("Emoji");
+    let color = row.get("Color");
+    let created_at = row.get("CreatedAt");
+    let updated_at = row.get("UpdatedAt");
 
     Folder {
         id,

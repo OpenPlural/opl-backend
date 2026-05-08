@@ -8,7 +8,6 @@ use crate::AppState;
 use actix_web::web::{Data, Json, Path, Query};
 use actix_web::{delete, get, patch, put, HttpRequest};
 use crate::error::WebError;
-use crate::model::IdResponse;
 
 #[get("/")]
 pub async fn get_folders(req: HttpRequest, data: Data<AppState>, query: Query<UserFilter>) -> WebResult {
@@ -21,29 +20,37 @@ pub async fn get_folders(req: HttpRequest, data: Data<AppState>, query: Query<Us
 }
 
 #[get("/{id}")]
-pub async fn get_folder(req: HttpRequest, data: Data<AppState>, path: Path<FolderId>) -> WebResult {
+pub async fn get_folder(req: HttpRequest, data: Data<AppState>, path: Path<FolderId>, query: Query<UserFilter>) -> WebResult {
+    let token = get_token(&req).unwrap();
+    let user_id = query.user_id.unwrap_or(token.user_id);
+    token.check_friendship(&data.pool, user_id, PERMISSION_LEVEL_MEMBERS).await?;
+
     let folder_id = path.into_inner();
 
-    if let Some(folder) = crate::database::folder::get_folder_by_id(&data.pool, folder_id).await.map_err(to_web_error)? {
-        let token = get_token(&req).unwrap();
-        token.check_friendship(&data.pool, folder.user_id, PERMISSION_LEVEL_MEMBERS).await?;
-
+    if let Some(folder) = crate::database::folder::get_folder_by_id(&data.pool, folder_id, user_id).await.map_err(to_web_error)? {
         ok(folder)
     } else {
         not_found()
     }
 }
 
-#[put("/")]
-pub async fn create_folder(req: HttpRequest, data: Data<AppState>, body: Json<Folder>) -> WebResult {
+#[put("/{id}")]
+pub async fn create_folder(req: HttpRequest, data: Data<AppState>, path: Path<FolderId>, body: Json<Folder>) -> WebResult {
     let token = get_token(&req).unwrap();
     token.require_write()?;
 
-    let body = body.into_inner();
-    let id = crate::database::folder::create_folder(&data.pool, token.user_id, &body).await.map_err(to_web_error)?;
-    ok(IdResponse {
-        id
-    })
+    let folder_id = path.into_inner();
+    if crate::database::folder::get_folder_by_id(&data.pool, folder_id, token.user_id).await.map_err(to_web_error)?.is_some() {
+        return Err(WebError::IdDuplicate);
+    }
+
+    let mut body = body.into_inner();
+    if body.id != folder_id {
+        return Err(WebError::IdMismatch);
+    }
+    body.user_id = token.user_id;
+    crate::database::folder::create_folder(&data.pool, &body).await.map_err(to_web_error)?;
+    ok_none()
 }
 
 #[delete("/{id}")]
@@ -62,14 +69,12 @@ pub async fn edit_folder(req: HttpRequest, data: Data<AppState>, path: Path<Fold
     token.require_write()?;
 
     let folder_id = path.into_inner();
-    let user_id = crate::database::folder::get_folder_user_id(&data.pool, folder_id).await.map_err(to_web_error)?;
-    token.require_self(user_id)?;
 
     let mut body = body.into_inner();
     if body.id != folder_id {
         return Err(WebError::IdMismatch);
     }
-    body.user_id = user_id;
+    body.user_id = token.user_id;
     crate::database::folder::edit_folder(&data.pool, &body).await.map_err(to_web_error)?;
     ok_none()
 }
