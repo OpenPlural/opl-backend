@@ -20,8 +20,8 @@ pub async fn get_incoming_friend_requests(pool: &DatabasePool, user_id: UserId) 
         .await?;
 
     Ok(friend_requests.into_iter().map(|row| FriendRequest {
-        code: row.get(0),
-        name: row.get(1),
+        code: row.get("FriendCode"),
+        name: row.get("Name"),
     }).collect())
 }
 
@@ -32,8 +32,8 @@ pub async fn get_outgoing_friend_requests(pool: &DatabasePool, user_id: UserId) 
         .await?;
 
     Ok(friend_requests.into_iter().map(|row| FriendRequest {
-        code: row.get(0),
-        name: row.get(1),
+        code: row.get("FriendCode"),
+        name: row.get("Name"),
     }).collect())
 }
 
@@ -129,8 +129,8 @@ pub async fn get_friend_settings(pool: &DatabasePool, user_id: UserId, friend_id
         .await?;
 
     if let Some(settings) = settings {
-        let permission_level: i8 = settings.get(0);
-        let notify_me: bool = settings.get(1);
+        let permission_level: i8 = settings.get("PermissionLevel");
+        let notify_me: bool = settings.get("NotifyMe");
 
         Ok(FriendSettings {
             permission_level,

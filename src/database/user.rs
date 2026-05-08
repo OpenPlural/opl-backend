@@ -43,8 +43,8 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
         .await?;
 
     if let Some(user) = user {
-        let user_id: UserId = user.get(0);
-        let password_hash: String = user.get(7);
+        let user_id: UserId = user.get("ID");
+        let password_hash: String = user.get("Password");
         let password_hash = PasswordHash::new(&password_hash).map_err(|e| anyhow!("{:?}", e))?;
 
         if get_password_hash_algorithm().await
@@ -109,14 +109,14 @@ pub async fn get_users_by_ids(pool: &DatabasePool, user_ids: &[UserId]) -> Datab
 }
 
 fn user_response(row: MySqlRow, with_friend_code: bool, token: Option<String>) -> UserResponse {
-    let user_id = row.get(0);
-    let user_name = row.get(1);
-    let avatar_url = row.get(2);
-    let description = row.get(3);
-    let color = row.get(4);
-    let system = row.get(5);
+    let user_id = row.get("ID");
+    let user_name = row.get("Name");
+    let avatar_url = row.get("AvatarUrl");
+    let description = row.get("Description");
+    let color = row.get("Color");
+    let system = row.get("System");
     let friend_code = if with_friend_code {
-        let uuid: Uuid = row.get(6);
+        let uuid: Uuid = row.get("FriendCode");
         Some(uuid.simple().to_string())
     } else {
         None

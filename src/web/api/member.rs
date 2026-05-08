@@ -9,7 +9,6 @@ use crate::web::{not_found, ok, ok_none, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Json, Path, Query};
 use actix_web::{delete, get, patch, put, HttpRequest};
-use crate::model::IdResponse;
 
 #[get("/")]
 pub async fn get_members(req: HttpRequest, data: Data<AppState>, query: Query<UserFilter>) -> WebResult {
@@ -22,32 +21,39 @@ pub async fn get_members(req: HttpRequest, data: Data<AppState>, query: Query<Us
 }
 
 #[get("/{id}")]
-pub async fn get_member(req: HttpRequest, data: Data<AppState>, path: Path<MemberId>) -> WebResult {
+pub async fn get_member(req: HttpRequest, data: Data<AppState>, path: Path<MemberId>, query: Query<UserFilter>) -> WebResult {
+    let token = get_token(&req).unwrap();
+    let user_id = query.user_id.unwrap_or(token.user_id);
+    token.check_friendship(&data.pool, user_id, PERMISSION_LEVEL_MEMBERS).await?;
+
     let member_id = path.into_inner();
 
-    if let Some(member) = crate::database::member::get_member_by_id(&data.pool, member_id).await.map_err(to_web_error)? {
-        let token = get_token(&req).unwrap();
-        token.check_friendship(&data.pool, member.user_id, PERMISSION_LEVEL_MEMBERS).await?;
-
+    if let Some(member) = crate::database::member::get_member_by_id(&data.pool, member_id, user_id).await.map_err(to_web_error)? {
         ok(member)
     } else {
         not_found()
     }
 }
 
-#[put("/")]
-pub async fn create_member(req: HttpRequest, data: Data<AppState>, body: Json<Member>) -> WebResult {
+#[put("/{id}")]
+pub async fn create_member(req: HttpRequest, data: Data<AppState>, path: Path<MemberId>, body: Json<Member>) -> WebResult {
     let token = get_token(&req).unwrap();
     token.require_write()?;
 
-    let body = body.into_inner();
-    let id = crate::database::member::create_member(&data.pool, token.user_id, &body).await.map_err(to_web_error)?;
-    if !body.folders.is_empty() {
-        crate::database::member::edit_member_folders(&data.pool, id, &body.folders).await.map_err(to_web_error)?;
+    let member_id = path.into_inner();
+    if crate::database::member::get_member_by_id(&data.pool, member_id, token.user_id).await.map_err(to_web_error)?.is_some() {
+        return Err(WebError::IdDuplicate);
     }
-    ok(IdResponse {
-        id
-    })
+
+    let body = body.into_inner();
+    if body.id != member_id {
+        return Err(WebError::IdMismatch);
+    }
+    crate::database::member::create_member(&data.pool, token.user_id, &body).await.map_err(to_web_error)?;
+    if !body.folders.is_empty() {
+        crate::database::member::edit_member_folders(&data.pool, body.id, token.user_id, &body.folders).await.map_err(to_web_error)?;
+    }
+    ok_none()
 }
 
 #[delete("/{id}")]
@@ -66,14 +72,12 @@ pub async fn edit_member(req: HttpRequest, data: Data<AppState>, path: Path<Memb
     token.require_write()?;
 
     let member_id = path.into_inner();
-    let user_id = crate::database::member::get_member_user_id(&data.pool, member_id).await.map_err(to_web_error)?;
-    token.require_self(user_id)?;
 
     let mut body = body.into_inner();
     if body.id != member_id {
         return Err(WebError::IdMismatch);
     }
-    body.user_id = user_id;
+    body.user_id = token.user_id;
     crate::database::member::edit_member(&data.pool, &body).await.map_err(to_web_error)?;
     ok_none()
 }
@@ -84,10 +88,8 @@ pub async fn edit_member_folders(req: HttpRequest, data: Data<AppState>, path: P
     token.require_write()?;
 
     let member_id = path.into_inner();
-    let user_id = crate::database::member::get_member_user_id(&data.pool, member_id).await.map_err(to_web_error)?;
-    token.require_self(user_id)?;
 
     let folder_ids = body.into_inner();
-    crate::database::member::edit_member_folders(&data.pool, member_id, &folder_ids).await.map_err(to_web_error)?;
+    crate::database::member::edit_member_folders(&data.pool, member_id, token.user_id, &folder_ids).await.map_err(to_web_error)?;
     ok_none()
 }

@@ -18,6 +18,8 @@ pub enum WebError {
     InvalidTimeFormat,
     #[error("The ID in the URL does not match the ID in the body")]
     IdMismatch,
+    #[error("This ID already exists")]
+    IdDuplicate,
 
     #[error("A user with this name already exists")]
     UsernameAlreadyExists,
@@ -58,6 +60,7 @@ impl ResponseError for WebError {
             WebError::InvalidToken => StatusCode::UNAUTHORIZED,
             WebError::InvalidTimeFormat => StatusCode::BAD_REQUEST,
             WebError::IdMismatch => StatusCode::BAD_REQUEST,
+            WebError::IdDuplicate => StatusCode::CONFLICT,
 
             WebError::UsernameAlreadyExists => StatusCode::CONFLICT,
             WebError::InvalidCredentials => StatusCode::UNAUTHORIZED,
