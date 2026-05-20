@@ -1,0 +1,41 @@
+CREATE TABLE CustomField
+(
+    ID        BIGINT             NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    UserId    INTEGER            NOT NULL,
+    Sort      MEDIUMINT UNSIGNED NOT NULL,
+    Name      VARCHAR(255)       NOT NULL,
+    DataType  TINYINT UNSIGNED   NOT NULL,
+    UpdatedAt TIMESTAMP          NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
+    FOREIGN KEY (UserId) REFERENCES User (ID) ON DELETE CASCADE
+);
+
+CREATE TABLE CustomFieldData
+(
+    ID        BIGINT    NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    UserId    INTEGER   NOT NULL,
+    FieldId   BIGINT    NOT NULL,
+    MemberId  BIGINT    NOT NULL,
+    DataValue TEXT      NOT NULL,
+    UpdatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
+    FOREIGN KEY (UserId) REFERENCES User (ID) ON DELETE CASCADE,
+    FOREIGN KEY (FieldId) REFERENCES CustomField (ID) ON DELETE CASCADE,
+    FOREIGN KEY (MemberId) REFERENCES Member (ID) ON DELETE CASCADE
+);
+
+CREATE TRIGGER trig_delete_custom_field
+    BEFORE DELETE
+    ON CustomField
+    FOR EACH ROW
+BEGIN
+    INSERT INTO Deletion (ResourceId, ResourceType, UserId)
+    VALUES (OLD.ID, 2, OLD.UserId);
+END;
+
+CREATE TRIGGER trig_delete_custom_field_data
+    BEFORE DELETE
+    ON CustomFieldData
+    FOR EACH ROW
+BEGIN
+    INSERT INTO Deletion (ResourceId, ResourceType, UserId)
+    VALUES (OLD.ID, 3, OLD.UserId);
+END;

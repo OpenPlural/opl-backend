@@ -1,3 +1,5 @@
+use crate::model::user::UserInfo;
+use crate::model::validate_number_range;
 use serde::{Deserialize, Serialize};
 
 pub const PERMISSION_LEVEL_NONE: i8 = 0;
@@ -13,14 +15,23 @@ pub struct FriendSettings {
     pub notify_me: bool,
 }
 
+impl FriendSettings {
+    pub fn validate(&self) -> Result<(), String> {
+        validate_number_range("permissionLevel", self.permission_level as isize, 0, 3)?;
+        Ok(())
+    }
+}
+
 #[derive(Debug, Default, Serialize)]
 pub struct FriendRequest {
     pub code: String,
     pub name: String,
+    pub system: bool,
 }
 
-impl FriendSettings {
-    pub fn check_permission(&self, level: i8) -> bool {
-        self.permission_level >= level
-    }
+#[derive(Debug, Serialize)]
+pub struct Friend {
+    pub user: UserInfo,
+    #[serde(rename = "frontText")]
+    pub front_text: Option<String>,
 }

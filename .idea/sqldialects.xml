@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="SqlDialectMappings">
-    <file url="file://$PROJECT_DIR$/migrations/0001-create-schema.sql" dialect="MariaDB" />
+    <file url="file://$PROJECT_DIR$/migrations/0001_create-auth-schema.sql" dialect="MariaDB" />
+    <file url="file://$PROJECT_DIR$/migrations/0002_deletion-schema.sql" dialect="MariaDB" />
+    <file url="file://$PROJECT_DIR$/migrations/0003_member-schema.sql" dialect="MariaDB" />
+    <file url="file://$PROJECT_DIR$/migrations/0004_folder-schema.sql" dialect="MariaDB" />
+    <file url="file://$PROJECT_DIR$/migrations/0005_front-schema.sql" dialect="MariaDB" />
+    <file url="file://$PROJECT_DIR$/migrations/0006_friend-schema.sql" dialect="MariaDB" />
+    <file url="file://$PROJECT_DIR$/migrations/0007_custom-field-schema.sql" dialect="MariaDB" />
+    <file url="file://$PROJECT_DIR$/migrations/0008_privacy-bucket-schema.sql" dialect="MariaDB" />
     <file url="PROJECT" dialect="MariaDB" />
   </component>
 </project>

@@ -1,8 +1,9 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use crate::middleware::TokenId;
 
-#[derive(Serialize)]
+pub type TokenId = i32;
+
+#[derive(Debug, Serialize)]
 pub struct SessionToken {
     pub id: TokenId,
     pub name: String,

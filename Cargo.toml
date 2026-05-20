@@ -11,6 +11,7 @@ serde = "*"
 serde_json = "*"
 argon2 = "*"
 rand = "*"
+anyhow = "*"
 thiserror = "*"
 strum_macros = "*"
 
@@ -18,17 +19,13 @@ strum_macros = "*"
 version = "*"
 features = ["v4"]
 
-[dependencies.anyhow]
-version = "*"
-features = ["backtrace"]
-
 [dependencies.chrono]
 version = "*"
 features = ["serde"]
 
 [dependencies.sqlx]
 version = "*"
-features = ["mysql", "runtime-tokio", "chrono", "uuid"]
+features = ["mysql", "runtime-tokio", "chrono", "uuid", "migrate"]
 
 [dependencies.tokio]
 version = "*"

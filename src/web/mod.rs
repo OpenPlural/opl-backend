@@ -19,3 +19,7 @@ pub(in crate::web) fn ok_none() -> WebResult {
 pub(in crate::web) fn not_found() -> WebResult {
     Ok(HttpResponse::NotFound().finish())
 }
+
+pub(in crate::web) fn validation_error(msg: String) -> WebError {
+    WebError::InvalidPayload(msg)
+}

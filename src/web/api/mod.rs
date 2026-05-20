@@ -4,3 +4,6 @@ pub mod friend;
 pub mod member;
 pub mod front;
 pub mod session;
+pub mod fields;
+pub mod sync;
+pub mod privacy;

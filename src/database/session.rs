@@ -1,7 +1,7 @@
 use sqlx::{query, Row};
 use crate::database::{DatabasePool, DatabaseResult};
-use crate::middleware::{RequestToken, TokenId};
-use crate::model::session::SessionToken;
+use crate::middleware::RequestToken;
+use crate::model::session::{SessionToken, TokenId};
 use crate::model::user::UserId;
 
 pub async fn check_session(pool: &DatabasePool, session_id: &str) -> DatabaseResult<Option<RequestToken>> {

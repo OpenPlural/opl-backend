@@ -7,8 +7,7 @@ use actix_web::dev::ServiceRequest;
 use actix_web::web::Data;
 use actix_web::{Error, HttpMessage, HttpRequest};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
-
-pub type TokenId = i32;
+use crate::model::session::TokenId;
 
 #[derive(Debug, Clone)]
 pub struct RequestToken {
@@ -35,20 +34,31 @@ impl RequestToken {
         }
     }
 
-    pub fn require_self(&self, user_id: UserId) -> Result<(), WebError> {
+    pub fn as_friend_viewer(&self, user_id: UserId) -> Option<UserId> {
         if self.user_id == user_id {
-            Ok(())
+            None
         } else {
-            Err(WebError::TokenPermissionDeniedSelf)
+            Some(self.user_id)
         }
     }
 
-    pub async fn check_friendship(&self, pool: &DatabasePool, user_id: UserId, permission_level: i8) -> Result<(), WebError> {
+    pub async fn check_friendship(&self, pool: &DatabasePool, user_id: UserId) -> Result<i8, WebError> {
         if user_id == self.user_id {
-            return Ok(());
+            return Ok(i8::MAX);
         }
         let settings = crate::database::friend::get_friend_settings(pool, user_id, self.user_id).await.map_err(to_web_error)?;
-        if settings.check_permission(permission_level) {
+        if let Some(settings) = settings {
+            Ok(settings.permission_level)
+        } else if crate::database::friend::check_friendship(pool, user_id, self.user_id).await.map_err(to_web_error)? {
+            Ok(0)
+        } else {
+            Err(WebError::FriendPermissionDenied)
+        }
+    }
+
+    pub async fn check_friendship_permissions(&self, pool: &DatabasePool, user_id: UserId, permission_level: i8) -> Result<(), WebError> {
+        let friend_permission_level = self.check_friendship(pool, user_id).await?;
+        if friend_permission_level >= permission_level {
             Ok(())
         } else {
             Err(WebError::FriendPermissionDenied)
