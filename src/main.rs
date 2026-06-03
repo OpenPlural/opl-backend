@@ -84,7 +84,7 @@ async fn main() -> std::io::Result<()> {
                 }
             })
             .service(
-                scope("/api")
+                scope("/api/v1")
                     .wrap(auth)
                     .service(
                         scope("/field")
