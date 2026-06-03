@@ -58,8 +58,11 @@ async fn main() -> std::io::Result<()> {
         let mut interval = interval(Duration::from_hours(12));
         loop {
             interval.tick().await;
+            if let Err(err) = database::session::clear_expired_sessions(&db_pool).await {
+                eprintln!("Failed to clear expired sessions: {:?}", err);
+            }
             if let Err(err) = database::deletion::clear_old_deletions(&db_pool).await {
-                eprintln!("Failed to clear old deletions: {}", err);
+                eprintln!("Failed to clear old deletions: {:?}", err);
             }
         }
     });

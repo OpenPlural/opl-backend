@@ -5,7 +5,7 @@ use crate::model::session::{SessionToken, TokenId};
 use crate::model::user::UserId;
 
 pub async fn check_session(pool: &DatabasePool, session_id: &str) -> DatabaseResult<Option<RequestToken>> {
-    let session = query("SELECT ID, UserId FROM Session WHERE Token = ? AND DATE_ADD(LastUsedAt, INTERVAL 7 DAY) > NOW()")
+    let session = query("SELECT ID, UserId FROM Session WHERE Token = ?")
         .bind(session_id)
         .fetch_optional(pool.as_ref())
         .await?;
@@ -52,6 +52,14 @@ pub async fn delete_session(pool: &DatabasePool, user_id: UserId, token_id: Toke
     query("DELETE FROM Session WHERE ID = ? AND UserId = ?")
         .bind(token_id)
         .bind(user_id)
+        .execute(pool.as_ref())
+        .await?;
+
+    Ok(())
+}
+
+pub async fn clear_expired_sessions(pool: &DatabasePool) -> DatabaseResult<()> {
+    query("DELETE FROM Session WHERE DATE_ADD(LastUsedAt, INTERVAL 7 DAY) > NOW()")
         .execute(pool.as_ref())
         .await?;
 
