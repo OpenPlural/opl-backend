@@ -17,6 +17,7 @@ pub struct UserInfo {
     #[serde(skip_deserializing)]
     pub id: UserId,
     pub name: String,
+    pub email: Option<String>,
     pub avatar: Option<String>,
     pub description: Option<String>,
     pub color: u32,
@@ -26,6 +27,9 @@ pub struct UserInfo {
 impl UserInfo {
     pub fn validate(&self) -> Result<(), String> {
         validate_string_length("name", &self.name, Some(3), Some(50), false)?;
+        if let Some(email) = &self.email {
+            validate_string_length("email", email, Some(5), Some(255), true)?;
+        }
         if let Some(avatar) = &self.avatar {
             validate_string_length("avatar", avatar, Some(1), Some(255), true)?;
         }

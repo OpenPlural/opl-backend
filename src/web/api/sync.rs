@@ -13,7 +13,7 @@ pub async fn sync(req: HttpRequest, data: Data<AppState>, query: Query<SyncQuery
     let token: RequestToken = get_token(&req).unwrap();
     token.require_admin()?;
 
-    if let Some((user, friend_code)) = crate::database::user::get_user_by_id(&data.pool, token.user_id).await.map_err(to_web_error)? {
+    if let Some((user, friend_code)) = crate::database::user::get_user_by_id(&data.pool, token.user_id, true).await.map_err(to_web_error)? {
         extend_session(&data.pool, token.token_id).await.map_err(to_web_error)?;
 
         let last_sync_time = query.since;

@@ -3,6 +3,7 @@ CREATE TABLE User
     ID          INTEGER            NOT NULL PRIMARY KEY AUTO_INCREMENT,
     Name        VARCHAR(50)        NOT NULL UNIQUE,
     Password    VARCHAR(255)       NOT NULL,
+    Email       VARCHAR(255)                DEFAULT NULL,
     CreatedAt   TIMESTAMP          NOT NULL DEFAULT CURRENT_TIMESTAMP(),
     AvatarUrl   VARCHAR(255)                DEFAULT NULL,
     Description TEXT                        DEFAULT NULL,

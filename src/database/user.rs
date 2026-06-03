@@ -37,7 +37,7 @@ pub async fn register(pool: &DatabasePool, user_name: &str, password: &str, syst
 }
 
 pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, password: &str) -> DatabaseResult<Option<AccountInfo>> {
-    let user = query("SELECT ID, Name, AvatarUrl, Description, Color, System, CreatedAt, FriendCode, Password FROM User WHERE Name=?")
+    let user = query("SELECT ID, Name, Email, AvatarUrl, Description, Color, System, CreatedAt, FriendCode, Password FROM User WHERE Name=?")
         .bind(user_name)
         .fetch_optional(pool.as_ref())
         .await?;
@@ -63,7 +63,8 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
             let created_at = user.get("CreatedAt");
             let friend_code: Uuid = user.get("FriendCode");
             let friend_code = friend_code.simple().to_string();
-            let user = user_info(user);
+            let email = user.get("Email");
+            let user = user_info(user, email);
             Ok(Some(AccountInfo {
                 session: SessionResponse {
                     id: token_id,
@@ -139,8 +140,9 @@ pub async fn change_password(pool: &DatabasePool, id: UserId, old_password: &str
 }
 
 pub async fn update_user(pool: &DatabasePool, user: &UserInfo) -> DatabaseResult<()> {
-    query("UPDATE User SET Name = ?, AvatarUrl = ?, Description = ?, Color = ?, System = ? WHERE ID=?")
+    query("UPDATE User SET Name = ?, Email = ?, AvatarUrl = ?, Description = ?, Color = ?, System = ? WHERE ID=?")
         .bind(&user.name)
+        .bind(&user.email)
         .bind(&user.avatar)
         .bind(&user.description)
         .bind(user.color)
@@ -161,8 +163,8 @@ pub async fn resolve_friend_code(pool: &DatabasePool, friend_code: &Uuid) -> Dat
     Ok(user_id.map(|row| row.get(0)))
 }
 
-pub async fn get_user_by_id(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Option<(UserInfo, String)>> {
-    let user = query("SELECT ID, Name, AvatarUrl, Description, Color, System, FriendCode FROM User WHERE ID=?")
+pub async fn get_user_by_id(pool: &DatabasePool, user_id: UserId, with_email: bool) -> DatabaseResult<Option<(UserInfo, String)>> {
+    let user = query("SELECT ID, Name, Email, AvatarUrl, Description, Color, System, FriendCode FROM User WHERE ID=?")
         .bind(user_id)
         .fetch_optional(pool.as_ref())
         .await?;
@@ -170,7 +172,12 @@ pub async fn get_user_by_id(pool: &DatabasePool, user_id: UserId) -> DatabaseRes
     if let Some(user) = user {
         let friend_code: Uuid = user.get("FriendCode");
         let friend_code = friend_code.simple().to_string();
-        let user = user_info(user);
+        let email = if with_email {
+            user.get("Email")
+        } else {
+            None
+        };
+        let user = user_info(user, email);
         Ok(Some((user, friend_code)))
     } else {
         Ok(None)
@@ -201,10 +208,10 @@ pub async fn get_users_by_ids(pool: &DatabasePool, user_ids: &[UserId]) -> Datab
     let statement = pool.prepare(&sql).await?;
     let users = statement.query_with(args).fetch_all(pool.as_ref()).await?;
 
-    Ok(users.into_iter().map(user_info).collect())
+    Ok(users.into_iter().map(|user| user_info(user, None)).collect())
 }
 
-fn user_info(row: MySqlRow) -> UserInfo {
+fn user_info(row: MySqlRow, email: Option<String>) -> UserInfo {
     let user_id = row.get("ID");
     let user_name = row.get("Name");
     let avatar_url = row.get("AvatarUrl");
@@ -215,6 +222,7 @@ fn user_info(row: MySqlRow) -> UserInfo {
     UserInfo {
         id: user_id,
         name: user_name,
+        email,
         avatar: avatar_url,
         description,
         color,

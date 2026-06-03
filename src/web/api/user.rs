@@ -12,7 +12,7 @@ use actix_web::{get, patch, HttpRequest};
 pub async fn get_self_user(req: HttpRequest, data: Data<AppState>) -> WebResult {
     let token: RequestToken = get_token(&req).unwrap();
 
-    if let Some((user, _)) = crate::database::user::get_user_by_id(&data.pool, token.user_id).await.map_err(to_web_error)? {
+    if let Some((user, _)) = crate::database::user::get_user_by_id(&data.pool, token.user_id, true).await.map_err(to_web_error)? {
         ok(user)
     } else {
         not_found()
@@ -26,7 +26,7 @@ pub async fn get_user(req: HttpRequest, data: Data<AppState>, path: Path<UserId>
     let permission_level = token.check_friendship(&data.pool, user_id).await?;
     let friend_viewer = token.as_friend_viewer(user_id);
 
-    if let Some((user, _)) = crate::database::user::get_user_by_id(&data.pool, user_id).await.map_err(to_web_error)? {
+    if let Some((user, _)) = crate::database::user::get_user_by_id(&data.pool, user_id, token.user_id == user_id).await.map_err(to_web_error)? {
         let (folders, members, front) = if permission_level >= PERMISSION_LEVEL_MEMBERS {
             let folders = crate::database::folder::get_folders(&data.pool, user_id, friend_viewer).await.map_err(to_web_error)?;
             let members = crate::database::member::get_members(&data.pool, user_id, friend_viewer).await.map_err(to_web_error)?;
