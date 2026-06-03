@@ -1,11 +1,8 @@
 use crate::database::{DatabasePool, DatabaseResult};
 use crate::model::auth::{AccountInfo, SessionResponse};
 use crate::model::user::{UserId, UserInfo};
-use crate::security::{get_password_hash_algorithm, random_string, SESSION_TOKEN_LENGTH};
+use crate::security::{hash, random_string, verify, SESSION_TOKEN_LENGTH};
 use anyhow::anyhow;
-use argon2::password_hash::rand_core::OsRng;
-use argon2::password_hash::SaltString;
-use argon2::{PasswordHash, PasswordHasher, PasswordVerifier};
 use sqlx::mysql::{MySqlArguments, MySqlRow};
 use sqlx::{query, Arguments, Executor, Row, Statement};
 use uuid::Uuid;
@@ -20,11 +17,7 @@ pub async fn register(pool: &DatabasePool, user_name: &str, password: &str, syst
         return Ok(false);
     }
 
-    let salt = SaltString::generate(&mut OsRng);
-    let password_hash = get_password_hash_algorithm().await
-        .hash_password(password.as_bytes(), &salt)
-        .map_err(|e| anyhow!("{:?}", e))?;
-    let password_hash = password_hash.to_string();
+    let password_hash = hash(password).await.map_err(|e| anyhow!("{:?}", e))?;
 
     query("INSERT INTO User (Name, Password, System) VALUES (?, ?, ?)")
         .bind(user_name)
@@ -45,11 +38,8 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
     if let Some(user) = user {
         let user_id: UserId = user.get("ID");
         let password_hash: String = user.get("Password");
-        let password_hash = PasswordHash::new(&password_hash).map_err(|e| anyhow!("{:?}", e))?;
 
-        if get_password_hash_algorithm().await
-            .verify_password(password.as_bytes(), &password_hash)
-            .is_ok() {
+        if verify(&password_hash, password).await.is_ok() {
             let token = random_string(SESSION_TOKEN_LENGTH);
 
             let token_id = query("INSERT INTO Session (UserID, Token, Name) VALUES (?, ?, ?) RETURNING ID")
@@ -90,10 +80,7 @@ pub async fn delete(pool: &DatabasePool, id: UserId, password: &str) -> Database
 
     if let Some(user) = user {
         let password_hash: String = user.get("Password");
-        let password_hash = PasswordHash::new(&password_hash).map_err(|e| anyhow!("{:?}", e))?;
-        if get_password_hash_algorithm().await
-            .verify_password(password.as_bytes(), &password_hash)
-            .is_ok() {
+        if verify(&password_hash, password).await.is_ok() {
             query("DELETE FROM User WHERE ID=?")
                 .bind(id)
                 .execute(pool.as_ref())
@@ -115,15 +102,8 @@ pub async fn change_password(pool: &DatabasePool, id: UserId, old_password: &str
 
     if let Some(user) = user {
         let password_hash: String = user.get("Password");
-        let password_hash = PasswordHash::new(&password_hash).map_err(|e| anyhow!("{:?}", e))?;
-        if get_password_hash_algorithm().await
-            .verify_password(old_password.as_bytes(), &password_hash)
-            .is_ok() {
-            let salt = SaltString::generate(&mut OsRng);
-            let password_hash = get_password_hash_algorithm().await
-                .hash_password(new_password.as_bytes(), &salt)
-                .map_err(|e| anyhow!("{:?}", e))?;
-            let password_hash = password_hash.to_string();
+        if verify(&password_hash, old_password).await.is_ok() {
+            let password_hash = hash(new_password).await.map_err(|e| anyhow!("{:?}", e))?;
 
             query("UPDATE User SET Password = ? WHERE ID=?")
                 .bind(password_hash)
