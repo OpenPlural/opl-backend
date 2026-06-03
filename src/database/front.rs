@@ -144,7 +144,7 @@ pub async fn get_active_front_entry_by_member(pool: &DatabasePool, user_id: User
 }
 
 pub async fn is_fronting(pool: &DatabasePool, user_id: UserId, member_id: MemberId) -> DatabaseResult<bool> {
-    let res = query("SELECT 1 FROM Front WHERE UserId = ? AND MemberId = ?")
+    let res = query("SELECT 1 FROM Front WHERE UserId = ? AND MemberId = ? AND EndedAt IS NULL")
         .bind(user_id)
         .bind(member_id)
         .fetch_optional(pool.as_ref())
