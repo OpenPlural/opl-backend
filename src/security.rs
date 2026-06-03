@@ -7,7 +7,7 @@ use tokio::sync::OnceCell;
 
 static PASSWORD_HASH_ALGORITHM: OnceCell<Argon2> = OnceCell::const_new();
 
-pub const SESSION_TOKEN_LENGTH: usize = 255;
+pub const SESSION_TOKEN_LENGTH: usize = 128;
 
 async fn get_hash_algorithm() -> &'static Argon2<'static> {
     PASSWORD_HASH_ALGORITHM.get_or_init(|| async {
