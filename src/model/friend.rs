@@ -17,7 +17,7 @@ pub struct FriendSettings {
 
 impl FriendSettings {
     pub fn validate(&self) -> Result<(), String> {
-        validate_number_range("permissionLevel", self.permission_level as isize, 0, 3)?;
+        validate_number_range("FriendSettings", "permissionLevel", self.permission_level as isize, 0, 3)?;
         Ok(())
     }
 }

@@ -34,7 +34,7 @@ pub enum CustomFieldDataType {
 
 impl CustomField {
     pub fn validate(&self) -> Result<(), String> {
-        validate_string_length("name", &self.name, Some(1), Some(255), false)?;
+        validate_string_length("CustomField", "name", &self.name, Some(1), Some(255), false)?;
         Ok(())
     }
 }
@@ -56,7 +56,7 @@ pub struct CustomFieldDataValue {
 
 impl CustomFieldDataValue {
     pub fn validate(&self) -> Result<(), String> {
-        validate_string_length("value", &self.value, Some(1), Some(65535), false)?;
+        validate_string_length("CustomFieldDataValue", "value", &self.value, Some(1), Some(65535), false)?;
         Ok(())
     }
 }

@@ -58,17 +58,17 @@ impl From<Member> for ViewedMember {
 
 impl Member {
     pub fn validate(&self) -> Result<(), String> {
-        validate_string_length("name", &self.name, Some(1), Some(255), false)?;
+        validate_string_length("Member", "name", &self.name, Some(1), Some(255), false)?;
         if let Some(pronouns) = &self.pronouns {
-            validate_string_length("pronouns", pronouns, Some(1), Some(255), true)?;
+            validate_string_length("Member", "pronouns", pronouns, Some(1), Some(255), true)?;
         }
         if let Some(avatar) = &self.avatar {
-            validate_string_length("avatar", avatar, Some(1), Some(255), true)?;
+            validate_string_length("Member", "avatar", avatar, Some(1), Some(255), true)?;
         }
         if let Some(description) = &self.description {
-            validate_string_length("description", description, Some(1), Some(65535), true)?;
+            validate_string_length("Member", "description", description, Some(1), Some(65535), true)?;
         }
-        validate_color_range("color", self.color)?;
+        validate_color_range("Member", "color", self.color)?;
         Ok(())
     }
 }

@@ -17,8 +17,8 @@ pub struct RegisterRequest {
 
 impl RegisterRequest {
     pub fn validate(&self) -> Result<(), String> {
-        validate_string_length("name", &self.name, Some(MIN_NAME_LENGTH), Some(MAX_NAME_LENGTH), false)?;
-        validate_string_length("password", &self.password, Some(MIN_PASSWORD_LENGTH), None, false)?;
+        validate_string_length("RegisterRequest", "name", &self.name, Some(MIN_NAME_LENGTH), Some(MAX_NAME_LENGTH), false)?;
+        validate_string_length("RegisterRequest", "password", &self.password, Some(MIN_PASSWORD_LENGTH), None, false)?;
         Ok(())
     }
 }
@@ -32,9 +32,9 @@ pub struct LoginRequest {
 
 impl LoginRequest {
     pub fn validate(&self) -> Result<(), String> {
-        validate_string_length("device", &self.device, None, Some(255), false)?;
-        validate_string_length("name", &self.name, Some(MIN_NAME_LENGTH), Some(MAX_NAME_LENGTH), false)?;
-        validate_string_length("password", &self.password, Some(MIN_PASSWORD_LENGTH), None, false)?;
+        validate_string_length("LoginRequest", "device", &self.device, None, Some(255), false)?;
+        validate_string_length("LoginRequest", "name", &self.name, Some(MIN_NAME_LENGTH), Some(MAX_NAME_LENGTH), false)?;
+        validate_string_length("LoginRequest", "password", &self.password, Some(MIN_PASSWORD_LENGTH), None, false)?;
         Ok(())
     }
 }
@@ -47,7 +47,7 @@ pub struct DeleteRequest {
 
 impl DeleteRequest {
     pub fn validate(&self) -> Result<(), String> {
-        validate_string_length("password", &self.password, Some(MIN_PASSWORD_LENGTH), None, false)?;
+        validate_string_length("DeleteRequest", "password", &self.password, Some(MIN_PASSWORD_LENGTH), None, false)?;
         Ok(())
     }
 }
@@ -63,8 +63,8 @@ pub struct ChangePasswordRequest {
 
 impl ChangePasswordRequest {
     pub fn validate(&self) -> Result<(), String> {
-        validate_string_length("oldPassword", &self.old_password, Some(MIN_PASSWORD_LENGTH), None, false)?;
-        validate_string_length("newPassword", &self.new_password, Some(MIN_PASSWORD_LENGTH), None, false)?;
+        validate_string_length("ChangePasswordRequest", "oldPassword", &self.old_password, Some(MIN_PASSWORD_LENGTH), None, false)?;
+        validate_string_length("ChangePasswordRequest", "newPassword", &self.new_password, Some(MIN_PASSWORD_LENGTH), None, false)?;
         Ok(())
     }
 }

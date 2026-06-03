@@ -27,14 +27,14 @@ pub struct PrivacyBucket {
 
 impl PrivacyBucket {
     pub fn validate(&self) -> Result<(), String> {
-        validate_string_length("name", &self.name, Some(1), Some(255), false)?;
+        validate_string_length("PrivacyBucket", "name", &self.name, Some(1), Some(255), false)?;
         if let Some(description) = &self.description {
-            validate_string_length("description", description, Some(1), Some(65535), true)?;
+            validate_string_length("PrivacyBucket", "description", description, Some(1), Some(65535), true)?;
         }
         if let Some(emoji) = &self.emoji {
-            validate_string_length("emoji", emoji, Some(1), Some(3), true)?;
+            validate_string_length("PrivacyBucket", "emoji", emoji, Some(1), Some(3), true)?;
         }
-        validate_color_range("color", self.color)?;
+        validate_color_range("PrivacyBucket", "color", self.color)?;
         Ok(())
     }
 }

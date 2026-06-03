@@ -26,7 +26,7 @@ pub struct FrontEntry {
 impl FrontEntry {
     pub fn validate(&self) -> Result<(), String> {
         if let Some(comment) = &self.comment {
-            validate_string_length("comment", comment, Some(1), Some(255), true)?;
+            validate_string_length("FrontEntry", "comment", comment, Some(1), Some(255), true)?;
         }
         Ok(())
     }
