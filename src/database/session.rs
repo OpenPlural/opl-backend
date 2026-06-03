@@ -5,7 +5,7 @@ use crate::model::session::{SessionToken, TokenId};
 use crate::model::user::UserId;
 
 pub async fn check_session(pool: &DatabasePool, session_id: &str) -> DatabaseResult<Option<RequestToken>> {
-    let session = query("SELECT ID, UserId FROM Session WHERE Token = ? AND ExpiresAt > NOW()")
+    let session = query("SELECT ID, UserId FROM Session WHERE Token = ? AND DATE_ADD(LastUsedAt, INTERVAL 7 DAY) > NOW()")
         .bind(session_id)
         .fetch_optional(pool.as_ref())
         .await?;
@@ -26,7 +26,7 @@ pub async fn check_session(pool: &DatabasePool, session_id: &str) -> DatabaseRes
 }
 
 pub async fn extend_session(pool: &DatabasePool, token_id: TokenId) -> DatabaseResult<()> {
-    query("UPDATE Session SET ExpiresAt = DATE_ADD(NOW(), INTERVAL 7 DAY) WHERE ID = ?")
+    query("UPDATE Session SET LastUsedAt = NOW() WHERE ID = ?")
         .bind(token_id)
         .execute(pool.as_ref())
         .await?;
@@ -35,7 +35,7 @@ pub async fn extend_session(pool: &DatabasePool, token_id: TokenId) -> DatabaseR
 }
 
 pub async fn get_sessions(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<SessionToken>> {
-    let sessions = query("SELECT ID, Name, CreatedAt, ExpiresAt FROM Session WHERE UserId = ?")
+    let sessions = query("SELECT ID, Name, CreatedAt, LastUsedAt FROM Session WHERE UserId = ?")
         .bind(user_id)
         .fetch_all(pool.as_ref())
         .await?;
@@ -44,7 +44,7 @@ pub async fn get_sessions(pool: &DatabasePool, user_id: UserId) -> DatabaseResul
         id: row.get("ID"),
         name: row.get("Name"),
         created_at: row.get("CreatedAt"),
-        expires_at: row.get("ExpiresAt")
+        last_used_at: row.get("LastUsedAt")
     }).collect())
 }
 

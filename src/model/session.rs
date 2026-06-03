@@ -9,6 +9,6 @@ pub struct SessionToken {
     pub name: String,
     #[serde(rename = "createdAt")]
     pub created_at: DateTime<Utc>,
-    #[serde(rename = "expiresAt")]
-    pub expires_at: DateTime<Utc>,
+    #[serde(rename = "lastUsedAt")]
+    pub last_used_at: DateTime<Utc>,
 }
