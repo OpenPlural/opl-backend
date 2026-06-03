@@ -42,9 +42,11 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
         if verify(&password_hash, password).await.is_ok() {
             let token = random_string(SESSION_TOKEN_LENGTH);
 
+            let token_hash = hash(&token).await.map_err(|e| anyhow!("{:?}", e))?;
+
             let token_id = query("INSERT INTO Session (UserID, Token, Name) VALUES (?, ?, ?) RETURNING ID")
                 .bind(user_id)
-                .bind(&token)
+                .bind(token_hash)
                 .bind(device_name)
                 .fetch_one(pool.as_ref())
                 .await?;
