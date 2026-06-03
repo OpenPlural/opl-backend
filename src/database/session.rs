@@ -59,7 +59,7 @@ pub async fn delete_session(pool: &DatabasePool, user_id: UserId, token_id: Toke
 }
 
 pub async fn clear_expired_sessions(pool: &DatabasePool) -> DatabaseResult<()> {
-    query("DELETE FROM Session WHERE DATE_ADD(LastUsedAt, INTERVAL 7 DAY) > NOW()")
+    query("DELETE FROM Session WHERE DATE_ADD(LastUsedAt, INTERVAL 7 DAY) < NOW()")
         .execute(pool.as_ref())
         .await?;
 
