@@ -74,15 +74,6 @@ async fn main() -> std::io::Result<()> {
             .app_data(Data::new(AppState {
                 pool: pool.clone()
             }))
-            .wrap_fn(|req, route| {
-                println!("{} {}", req.method(), req.path());
-
-                let res = route.call(req);
-                async {
-                    let res = res.await?;
-                    Ok(res)
-                }
-            })
             .service(
                 scope("/api/v1")
                     .wrap(auth)
