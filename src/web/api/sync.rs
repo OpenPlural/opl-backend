@@ -1,7 +1,7 @@
 use crate::database::session::extend_session;
 use crate::database::to_web_error;
 use crate::middleware::{get_token, RequestToken};
-use crate::model::sync::{ServerTimeResponse, SyncQuery, SyncResponse};
+use crate::model::sync::{SyncQuery, SyncResponse};
 use crate::web::{not_found, ok, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Query};
@@ -83,15 +83,4 @@ pub async fn sync(req: HttpRequest, data: Data<AppState>, query: Query<SyncQuery
     } else {
         not_found()
     }
-}
-
-#[get("/finish")]
-pub async fn finish_sync(req: HttpRequest, data: Data<AppState>) -> WebResult {
-    let token: RequestToken = get_token(&req).unwrap();
-    token.require_admin()?;
-
-    let time = crate::database::time::get_database_time(&data.pool).await.map_err(to_web_error)?;
-    ok(ServerTimeResponse {
-        time,
-    })
 }

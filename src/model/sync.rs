@@ -37,8 +37,3 @@ pub struct SyncResponse {
     pub updated_field_values: Vec<CustomFieldDataValue>,
     pub front: Vec<FrontEntry>,
 }
-
-#[derive(Debug, Serialize)]
-pub struct ServerTimeResponse {
-    pub time: DateTime<Utc>,
-}
