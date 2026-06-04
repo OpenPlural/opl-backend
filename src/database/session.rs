@@ -3,21 +3,16 @@ use crate::database::{DatabasePool, DatabaseResult};
 use crate::middleware::RequestToken;
 use crate::model::session::{SessionToken, TokenId};
 use crate::model::user::UserId;
-use crate::security::verify;
 
-pub async fn  check_session(pool: &DatabasePool, token_id: TokenId, token: &str) -> DatabaseResult<Option<RequestToken>> {
-    let session = query("SELECT UserId, Token FROM Session WHERE ID = ?")
-        .bind(token_id)
+pub async fn  check_session(pool: &DatabasePool, token: &str) -> DatabaseResult<Option<RequestToken>> {
+    let session = query("SELECT ID, UserId FROM Session WHERE Token = ?")
+        .bind(token)
         .fetch_optional(pool.as_ref())
         .await?;
 
     if let Some(session) = session {
-        let token_hash: String = session.get("Token");
-        if verify(&token_hash, token).await.is_err() {
-            return Ok(None);
-        }
-
-        let user_id: UserId = session.get("UserId");
+        let token_id = session.get("ID");
+        let user_id = session.get("UserId");
         Ok(Some(RequestToken {
             token_id,
             user_id,

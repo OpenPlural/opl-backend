@@ -1,7 +1,7 @@
 use crate::database::{DatabasePool, DatabaseResult};
 use crate::model::auth::{AccountInfo, SessionResponse};
 use crate::model::user::{UserId, UserInfo};
-use crate::security::{hash, random_string, verify, SESSION_TOKEN_LENGTH};
+use crate::security::{hash, random_string, sha256, verify, SESSION_TOKEN_LENGTH};
 use anyhow::anyhow;
 use sqlx::mysql::{MySqlArguments, MySqlRow};
 use sqlx::{query, Arguments, Executor, Row, Statement};
@@ -41,8 +41,7 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
 
         if verify(&password_hash, password).await.is_ok() {
             let token = random_string(SESSION_TOKEN_LENGTH);
-
-            let token_hash = hash(&token).await.map_err(|e| anyhow!("{:?}", e))?;
+            let token_hash = sha256(&token);
 
             let token_id = query("INSERT INTO Session (UserID, Token, Name) VALUES (?, ?, ?) RETURNING ID")
                 .bind(user_id)

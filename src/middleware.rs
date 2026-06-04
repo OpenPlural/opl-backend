@@ -8,7 +8,7 @@ use actix_web::web::Data;
 use actix_web::{Error, HttpMessage, HttpRequest};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use crate::model::session::TokenId;
-use crate::security::SESSION_TOKEN_LENGTH;
+use crate::security::sha256;
 
 #[derive(Debug, Clone)]
 pub struct RequestToken {
@@ -69,24 +69,20 @@ impl RequestToken {
 
 pub async fn bearer_validation(req: ServiceRequest, bearer: BearerAuth) -> Result<ServiceRequest, (Error, ServiceRequest)> {
     let token = bearer.token();
-    if let Some((token, id)) = token.split_at_checked(SESSION_TOKEN_LENGTH) {
-        if let Ok(id) = id.parse::<TokenId>() {
-            let data = req.app_data::<Data<AppState>>().unwrap();
-            return match check_session(&data.pool, id, token).await {
-                Ok(Some(token)) => {
-                    req.extensions_mut().insert(token);
-                    Ok(req)
-                }
-                Ok(None) => {
-                    Err((WebError::InvalidToken.into(), req))
-                }
-                Err(err) => {
-                    Err((WebError::DatabaseError(err).into(), req))
-                }
-            }
+    let hashed_token = sha256(token);
+    let data = req.app_data::<Data<AppState>>().unwrap();
+    match check_session(&data.pool, &hashed_token).await {
+        Ok(Some(token)) => {
+            req.extensions_mut().insert(token);
+            Ok(req)
+        }
+        Ok(None) => {
+            Err((WebError::InvalidToken.into(), req))
+        }
+        Err(err) => {
+            Err((WebError::DatabaseError(err).into(), req))
         }
     }
-    Err((WebError::InvalidToken.into(), req))
 }
 
 pub fn get_token(req: &HttpRequest) -> Option<RequestToken> {
