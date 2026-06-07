@@ -5,7 +5,7 @@ CREATE TABLE PrivacyBucket
     Sort        MEDIUMINT UNSIGNED NOT NULL,
     Name        VARCHAR(255)       NOT NULL,
     Description TEXT                        DEFAULT NULL,
-    Emoji       VARCHAR(3)                  DEFAULT NULL,
+    Emoji       VARCHAR(4)                  DEFAULT NULL,
     Color       MEDIUMINT UNSIGNED NOT NULL DEFAULT 16777215,
     FOREIGN KEY (UserId) REFERENCES User (ID) ON DELETE CASCADE
 );
