@@ -17,7 +17,7 @@ pub async fn fill_front_text(pool: &DatabasePool, viewer: UserId, users: Vec<Use
 
     let placeholders = users.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
     let sql = format!(r#"
-SELECT f.UserId, m.Name FROM Front f JOIN Member m ON m.ID = f.ID WHERE f.UserId IN ({placeholders}) AND f.EndedAt IS NULL AND EXISTS (
+SELECT f.UserId, m.Name FROM Front f JOIN Member m ON m.ID = f.MemberId WHERE f.UserId IN ({placeholders}) AND f.EndedAt IS NULL AND EXISTS (
     SELECT 1 FROM PrivacyBucketMember pm
              INNER JOIN PrivacyBucketFriend pf
              ON pf.BucketId = pm.BucketId AND pf.UserId = pm.UserId
