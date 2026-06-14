@@ -8,6 +8,7 @@ pub mod fields;
 pub mod privacy;
 pub mod deletion;
 pub mod time;
+pub mod apikey;
 
 use std::sync::Arc;
 use sqlx::MySqlPool;

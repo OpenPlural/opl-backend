@@ -25,7 +25,7 @@ pub async fn get_friends(req: HttpRequest, data: Data<AppState>) -> WebResult {
 #[get("/requests/incoming")]
 pub async fn get_incoming_friend_requests(req: HttpRequest, data: Data<AppState>) -> WebResult {
     let token = get_token(&req).unwrap();
-    token.require_admin()?;
+    token.require_session()?;
 
     let requests = crate::database::friend::get_incoming_friend_requests(&data.pool, token.user_id).await.map_err(to_web_error)?;
     ok(requests)
@@ -34,7 +34,7 @@ pub async fn get_incoming_friend_requests(req: HttpRequest, data: Data<AppState>
 #[get("/requests/outgoing")]
 pub async fn get_outgoing_friend_requests(req: HttpRequest, data: Data<AppState>) -> WebResult {
     let token = get_token(&req).unwrap();
-    token.require_admin()?;
+    token.require_session()?;
 
     let requests = crate::database::friend::get_outgoing_friend_requests(&data.pool, token.user_id).await.map_err(to_web_error)?;
     ok(requests)
@@ -43,7 +43,7 @@ pub async fn get_outgoing_friend_requests(req: HttpRequest, data: Data<AppState>
 #[put("/requests/{code}")]
 pub async fn send_friend_request(req: HttpRequest, data: Data<AppState>, path: Path<String>) -> WebResult {
     let token = get_token(&req).unwrap();
-    token.require_admin()?;
+    token.require_session()?;
 
     let to_friend_code = path.into_inner();
     let to_friend_code = Uuid::parse_str(&to_friend_code).map_err(|_| WebError::InvalidFriendCode)?;
@@ -71,7 +71,7 @@ pub async fn send_friend_request(req: HttpRequest, data: Data<AppState>, path: P
 #[delete("/requests/{code}")]
 pub async fn cancel_friend_request(req: HttpRequest, data: Data<AppState>, path: Path<String>) -> WebResult {
     let token = get_token(&req).unwrap();
-    token.require_admin()?;
+    token.require_session()?;
 
     let to_friend_code = path.into_inner();
     let to_friend_code = Uuid::parse_str(&to_friend_code).map_err(|_| WebError::InvalidFriendCode)?;
@@ -85,7 +85,7 @@ pub async fn cancel_friend_request(req: HttpRequest, data: Data<AppState>, path:
 #[post("/requests/{code}/accept")]
 pub async fn accept_friend_request(req: HttpRequest, data: Data<AppState>, path: Path<String>) -> WebResult {
     let token = get_token(&req).unwrap();
-    token.require_admin()?;
+    token.require_session()?;
 
     let from_user_code = path.into_inner();
     let from_user_code = Uuid::parse_str(&from_user_code).map_err(|_| WebError::InvalidFriendCode)?;
@@ -103,7 +103,7 @@ pub async fn accept_friend_request(req: HttpRequest, data: Data<AppState>, path:
 #[post("/requests/{code}/decline")]
 pub async fn decline_friend_request(req: HttpRequest, data: Data<AppState>, path: Path<String>) -> WebResult {
     let token = get_token(&req).unwrap();
-    token.require_admin()?;
+    token.require_session()?;
 
     let from_user_code = path.into_inner();
     let from_user_code = Uuid::parse_str(&from_user_code).map_err(|_| WebError::InvalidFriendCode)?;
@@ -117,7 +117,7 @@ pub async fn decline_friend_request(req: HttpRequest, data: Data<AppState>, path
 #[delete("/{id}")]
 pub async fn unfriend(req: HttpRequest, data: Data<AppState>, path: Path<UserId>) -> WebResult {
     let token = get_token(&req).unwrap();
-    token.require_admin()?;
+    token.require_session()?;
 
     let friend_id = path.into_inner();
     crate::database::friend::remove_friend(&data.pool, token.user_id, friend_id).await.map_err(to_web_error)?;
@@ -137,7 +137,7 @@ pub async fn get_settings(req: HttpRequest, data: Data<AppState>, path: Path<Use
 #[patch("/{id}/settings")]
 pub async fn update_settings(req: HttpRequest, data: Data<AppState>, body: Json<FriendSettings>, path: Path<UserId>) -> WebResult {
     let token = get_token(&req).unwrap();
-    token.require_admin()?;
+    token.require_session()?;
 
     let friend_id = path.into_inner();
 

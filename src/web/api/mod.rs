@@ -7,3 +7,4 @@ pub mod session;
 pub mod fields;
 pub mod sync;
 pub mod privacy;
+pub mod apikey;

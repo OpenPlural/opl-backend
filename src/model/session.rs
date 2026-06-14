@@ -1,11 +1,11 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-pub type TokenId = i32;
+pub type SessionId = i64;
 
 #[derive(Debug, Serialize)]
-pub struct SessionToken {
-    pub id: TokenId,
+pub struct Session {
+    pub id: SessionId,
     pub name: String,
     #[serde(rename = "createdAt")]
     pub created_at: DateTime<Utc>,

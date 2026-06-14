@@ -11,10 +11,10 @@ use crate::model::deletion::DeletionResourceType;
 #[get("/")]
 pub async fn sync(req: HttpRequest, data: Data<AppState>, query: Query<SyncQuery>) -> WebResult {
     let token: RequestToken = get_token(&req).unwrap();
-    token.require_admin()?;
+    token.require_session()?;
 
     if let Some((user, friend_code)) = crate::database::user::get_user_by_id(&data.pool, token.user_id, true).await.map_err(to_web_error)? {
-        extend_session(&data.pool, token.token_id).await.map_err(to_web_error)?;
+        extend_session(&data.pool, token.session_id.unwrap()).await.map_err(to_web_error)?;
 
         let last_sync_time = query.since;
         let time = crate::database::time::get_database_time(&data.pool).await.map_err(to_web_error)?;

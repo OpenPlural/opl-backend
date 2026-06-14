@@ -1,0 +1,10 @@
+CREATE TABLE ApiKey
+(
+    ID              BIGINT       NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    UserId          INTEGER      NOT NULL,
+    Token           VARCHAR(255) NOT NULL UNIQUE,
+    Name            VARCHAR(255) NOT NULL,
+    WritePermission BOOLEAN      NOT NULL,
+    CreatedAt       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    FOREIGN KEY (UserId) REFERENCES User (ID) ON DELETE CASCADE
+);

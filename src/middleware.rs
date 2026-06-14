@@ -7,15 +7,15 @@ use actix_web::dev::ServiceRequest;
 use actix_web::web::Data;
 use actix_web::{Error, HttpMessage, HttpRequest};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
-use crate::model::session::TokenId;
-use crate::security::sha256;
+use crate::database::apikey::check_api_key;
+use crate::model::session::SessionId;
+use crate::security::{sha256, API_KEY_TOKEN_PREFIX};
 
 #[derive(Debug, Clone)]
 pub struct RequestToken {
-    pub token_id: TokenId,
+    pub session_id: Option<SessionId>,
     pub user_id: UserId,
     pub write: bool,
-    pub admin: bool, // Admin tokens are user sessions obtained by login, as opposed to tokens generated for API access
 }
 
 impl RequestToken {
@@ -27,8 +27,8 @@ impl RequestToken {
         }
     }
 
-    pub fn require_admin(&self) -> Result<(), WebError> {
-        if self.admin {
+    pub fn require_session(&self) -> Result<(), WebError> {
+        if self.session_id.is_some() {
             Ok(())
         } else {
             Err(WebError::TokenPermissionDeniedAdmin)
@@ -69,9 +69,15 @@ impl RequestToken {
 
 pub async fn bearer_validation(req: ServiceRequest, bearer: BearerAuth) -> Result<ServiceRequest, (Error, ServiceRequest)> {
     let token = bearer.token();
-    let hashed_token = sha256(token);
     let data = req.app_data::<Data<AppState>>().unwrap();
-    match check_session(&data.pool, &hashed_token).await {
+    let result = if let Some(token) = token.strip_prefix(API_KEY_TOKEN_PREFIX) {
+        let hashed_token = sha256(token);
+        check_api_key(&data.pool, &hashed_token).await
+    } else {
+        let hashed_token = sha256(token);
+        check_session(&data.pool, &hashed_token).await
+    };
+    match result {
         Ok(Some(token)) => {
             req.extensions_mut().insert(token);
             Ok(req)

@@ -1,4 +1,4 @@
-use crate::model::session::TokenId;
+use crate::model::session::SessionId;
 use crate::model::user::{UserId, UserInfo};
 use crate::model::validate_string_length;
 use chrono::{DateTime, Utc};
@@ -71,7 +71,7 @@ impl ChangePasswordRequest {
 
 #[derive(Debug, Serialize)]
 pub struct SessionResponse {
-    pub id: TokenId,
+    pub id: SessionId,
     pub token: String,
 }
 

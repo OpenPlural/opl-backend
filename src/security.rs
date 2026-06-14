@@ -11,6 +11,8 @@ use tokio::sync::OnceCell;
 static PASSWORD_HASH_ALGORITHM: OnceCell<Argon2> = OnceCell::const_new();
 
 pub const SESSION_TOKEN_LENGTH: usize = 128;
+pub const API_KEY_TOKEN_LENGTH: usize = 126;
+pub const API_KEY_TOKEN_PREFIX: &str = "k-";
 const SHA256_PEPPER: &'static str = "OpenPlural";
 
 async fn get_hash_algorithm() -> &'static Argon2<'static> {
