@@ -5,7 +5,7 @@ CREATE TABLE Folder
     ParentId    BIGINT                      DEFAULT NULL,
     Name        VARCHAR(255)       NOT NULL,
     Description TEXT                        DEFAULT NULL,
-    Emoji       VARCHAR(4)                  DEFAULT NULL,
+    Emoji       VARCHAR(30)                  DEFAULT NULL,
     Color       MEDIUMINT UNSIGNED NOT NULL DEFAULT 16777215,
     CreatedAt   TIMESTAMP          NOT NULL DEFAULT CURRENT_TIMESTAMP(),
     UpdatedAt   TIMESTAMP          NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),

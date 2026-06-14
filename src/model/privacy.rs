@@ -32,7 +32,7 @@ impl PrivacyBucket {
             validate_string_length("PrivacyBucket", "description", description, Some(1), Some(65535), true)?;
         }
         if let Some(emoji) = &self.emoji {
-            validate_string_length("PrivacyBucket", "emoji", emoji, Some(1), Some(4), true)?;
+            validate_string_length("PrivacyBucket", "emoji", emoji, Some(1), Some(30), true)?;
         }
         validate_color_range("PrivacyBucket", "color", self.color)?;
         Ok(())
