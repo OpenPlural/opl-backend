@@ -118,12 +118,12 @@ async fn main() -> std::io::Result<()> {
                     )
                     .service(
                         scope("/front")
+                            .service(get_front_history)
                             .service(get_front_entries)
                             .service(get_front_entry)
                             .service(add_front_entry)
                             .service(delete_front_entry)
                             .service(edit_front_entry)
-                            .service(get_front_history)
                     )
                     .service(
                         scope("/member")
