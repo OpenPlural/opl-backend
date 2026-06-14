@@ -5,6 +5,7 @@ use actix_web::http::StatusCode;
 use serde::Serialize;
 use strum_macros::IntoStaticStr;
 use thiserror::Error;
+use crate::middleware::make_session_cookie;
 
 #[derive(Debug, Error, IntoStaticStr)]
 pub enum WebError {
@@ -14,6 +15,8 @@ pub enum WebError {
     InvalidPayload(String),
     #[error("Invalid token")]
     InvalidToken,
+    #[error("Failed to set cookie {0:?}")]
+    CantSetCookie(anyhow::Error),
 
     #[error("Account registration is disabled")]
     RegistrationDisabled,
@@ -54,6 +57,7 @@ impl ResponseError for WebError {
             WebError::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             WebError::InvalidPayload(_) => StatusCode::BAD_REQUEST,
             WebError::InvalidToken => StatusCode::UNAUTHORIZED,
+            WebError::CantSetCookie(_) => StatusCode::INTERNAL_SERVER_ERROR,
 
             WebError::RegistrationDisabled => StatusCode::FORBIDDEN,
             WebError::UsernameAlreadyExists => StatusCode::CONFLICT,
@@ -82,15 +86,25 @@ impl ResponseError for WebError {
 
                 "Database error".to_string()
             },
+            WebError::CantSetCookie(err) => {
+                eprintln!("Cant set cookie: {:?}", err);
+
+                "Failed to set cookie".to_string()
+            }
             err => err.to_string(),
         };
 
         let kind: &'static str = self.into();
 
-        HttpResponse::new(self.status_code()).set_body(BoxBody::new(serde_json::to_string(&WebErrorResponse {
+        let mut res = HttpResponse::new(self.status_code()).set_body(BoxBody::new(serde_json::to_string(&WebErrorResponse {
             kind,
             message,
-        }).unwrap_or("{}".to_string())))
+        }).unwrap_or("{}".to_string())));
+        if matches!(self, WebError::InvalidToken) {
+            let cookie = make_session_cookie("".to_string());
+            let _ = res.add_removal_cookie(&cookie);
+        }
+        res
     }
 }
 

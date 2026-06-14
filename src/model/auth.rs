@@ -70,14 +70,8 @@ impl ChangePasswordRequest {
 }
 
 #[derive(Debug, Serialize)]
-pub struct SessionResponse {
-    pub id: SessionId,
-    pub token: String,
-}
-
-#[derive(Debug, Serialize)]
 pub struct AccountInfo {
-    pub session: SessionResponse,
+    pub session: SessionId,
     #[serde(rename = "createdAt")]
     pub created_at: DateTime<Utc>,
     #[serde(rename = "friendCode")]

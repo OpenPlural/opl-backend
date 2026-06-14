@@ -5,7 +5,7 @@ use crate::web::{ok, ok_none, validation_error, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Json, Path};
 use actix_web::{delete, get, put, HttpRequest};
-use crate::security::{random_string, sha256, API_KEY_TOKEN_LENGTH, API_KEY_TOKEN_PREFIX};
+use crate::security::{random_string, sha256, API_KEY_TOKEN_LENGTH};
 
 #[get("/")]
 pub async fn get_api_keys(req: HttpRequest, data: Data<AppState>) -> WebResult {
@@ -26,7 +26,7 @@ pub async fn create_api_key(req: HttpRequest, data: Data<AppState>, body: Json<A
     body.user_id = token.user_id;
 
     let token = random_string(API_KEY_TOKEN_LENGTH);
-    body.token = Some(format!("{}{}", API_KEY_TOKEN_PREFIX, token));
+    body.token = Some(token.clone());
     let token = sha256(&token);
 
     let id = crate::database::apikey::create_api_key(&data.pool, &body, &token).await.map_err(to_web_error)?;

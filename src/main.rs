@@ -8,7 +8,7 @@ mod error;
 mod middleware;
 
 use crate::database::DatabasePool;
-use crate::middleware::bearer_validation;
+use crate::middleware::authenticator_mw;
 use crate::web::api::folder::{create_folder, delete_folder, edit_folder, get_folder, get_folder_privacy, get_folders};
 use crate::web::api::friend::{accept_friend_request, cancel_friend_request, decline_friend_request, get_friend_privacy, get_friends, get_incoming_friend_requests, get_outgoing_friend_requests, get_settings, send_friend_request, unfriend, update_settings};
 use crate::web::api::front::{add_front_entry, delete_front_entry, edit_front_entry, get_front_entries, get_front_entry, get_front_history};
@@ -21,12 +21,12 @@ use crate::web::version::version;
 use actix_web::dev::Service;
 use actix_web::web::{scope, Data};
 use actix_web::{App, HttpServer};
-use actix_web_httpauth::middleware::HttpAuthentication;
 use sqlx::mysql::MySqlConnectOptions;
 use sqlx::{migrate, MySqlPool};
 use std::env::var;
 use std::sync::Arc;
 use std::time::Duration;
+use actix_web::middleware::from_fn;
 use tokio::spawn;
 use tokio::time::interval;
 use crate::web::api::apikey::{create_api_key, delete_api_key, get_api_keys};
@@ -69,15 +69,13 @@ async fn main() -> std::io::Result<()> {
     });
 
     HttpServer::new(move || {
-        let auth = HttpAuthentication::bearer(bearer_validation);
-
         App::new()
             .app_data(Data::new(AppState {
                 pool: pool.clone()
             }))
             .service(
                 scope("/api/v1")
-                    .wrap(auth)
+                    .wrap(from_fn(authenticator_mw))
                     .service(
                         scope("/api-key")
                             .service(get_api_keys)

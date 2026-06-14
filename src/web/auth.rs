@@ -1,10 +1,12 @@
 use crate::database::to_web_error;
 use crate::error::WebError;
 use crate::model::auth::{ChangePasswordRequest, DeleteRequest, LoginRequest, RegisterRequest};
-use crate::web::{ok, ok_none, validation_error, WebResult};
+use crate::web::{ok_none, validation_error, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Json};
-use actix_web::post;
+use actix_web::{post, HttpResponse};
+use anyhow::anyhow;
+use crate::middleware::make_session_cookie;
 
 #[post("/register")]
 pub async fn register(req: Json<RegisterRequest>, data: Data<AppState>) -> WebResult {
@@ -27,8 +29,12 @@ pub async fn login(req: Json<LoginRequest>, data: Data<AppState>) -> WebResult {
     let req = req.into_inner();
     req.validate().map_err(validation_error)?;
 
-    if let Some(user) = crate::database::user::login(&data.pool, &req.device, &req.name, &req.password).await.map_err(to_web_error)? {
-        ok(user)
+    if let Some((user, token)) = crate::database::user::login(&data.pool, &req.device, &req.name, &req.password).await.map_err(to_web_error)? {
+        let cookie = make_session_cookie(token);
+
+        let mut res = HttpResponse::Ok().json(user);
+        res.add_cookie(&cookie).map_err(|err| WebError::CantSetCookie(anyhow!("{:?}", err)))?;
+        Ok(res)
     } else {
         Err(WebError::InvalidCredentials)
     }
