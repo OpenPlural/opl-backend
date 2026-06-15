@@ -9,7 +9,7 @@ CREATE TABLE User
     Description TEXT                        DEFAULT NULL,
     Color       MEDIUMINT UNSIGNED NOT NULL DEFAULT 16777215,
     System      BOOLEAN            NOT NULL,
-    FriendCode  BINARY(16)         NOT NULL DEFAULT UNHEX(SYS_GUID()) UNIQUE
+    FriendCode  BINARY(16)         NOT NULL DEFAULT RANDOM_BYTES(16) UNIQUE
 );
 
 CREATE TABLE Session

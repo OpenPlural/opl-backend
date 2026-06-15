@@ -190,7 +190,7 @@ pub async fn get_users_by_ids(pool: &DatabasePool, user_ids: &[UserId]) -> Datab
 }
 
 pub async fn change_friend_code(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<()> {
-    query("UPDATE User SET FriendCode = UNHEX(SYS_GUID()) WHERE ID=?")
+    query("UPDATE User SET FriendCode = RANDOM_BYTES(16) WHERE ID=?")
         .bind(user_id)
         .execute(pool.as_ref())
         .await?;
