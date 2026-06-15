@@ -6,7 +6,8 @@ use crate::model::user::{ExtendedUserInfo, UserId, UserInfo};
 use crate::web::{not_found, ok, ok_none, validation_error, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Json, Path};
-use actix_web::{get, patch, HttpRequest};
+use actix_web::{get, patch, post, HttpRequest};
+use serde_json::json;
 
 #[get("/self")]
 pub async fn get_self_user(req: HttpRequest, data: Data<AppState>) -> WebResult {
@@ -92,4 +93,19 @@ pub async fn edit_user(req: HttpRequest, data: Data<AppState>, body: Json<UserIn
     
     crate::database::user::update_user(&data.pool, &body).await.map_err(to_web_error)?;
     ok_none()
+}
+
+#[post("/change-friend-code")]
+pub async fn change_friend_code(req: HttpRequest, data: Data<AppState>) -> WebResult {
+    let token: RequestToken = get_token(&req).unwrap();
+    token.require_session()?;
+
+    crate::database::user::change_friend_code(&data.pool, token.user_id).await.map_err(to_web_error)?;
+    if let Some(friend_code) = crate::database::user::get_friend_code(&data.pool, token.user_id).await.map_err(to_web_error)? {
+        ok(json!({
+            "friendCode": friend_code,
+        }))
+    } else {
+        not_found()
+    }
 }

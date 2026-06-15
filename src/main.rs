@@ -17,7 +17,7 @@ use crate::web::api::front::{add_front_entry, delete_front_entry, edit_front_ent
 use crate::web::api::member::{create_member, delete_member, edit_member, edit_member_folders, get_member, get_member_field_values, get_member_fields, get_member_front_entry, get_member_front_history, get_member_privacy, get_members};
 use crate::web::api::session::{get_sessions, invalidate_current_session, invalidate_session};
 use crate::web::api::sync::sync;
-use crate::web::api::user::{edit_user, get_self_user, get_user, get_username};
+use crate::web::api::user::{change_friend_code, edit_user, get_self_user, get_user, get_username};
 use crate::web::auth::{change_password, delete_account, login, register};
 use crate::web::version::version;
 use actix_web::dev::Service;
@@ -195,6 +195,7 @@ async fn main() -> std::io::Result<()> {
                             .service(get_user)
                             .service(get_username)
                             .service(edit_user)
+                            .service(change_friend_code)
                     )
             )
             .service(

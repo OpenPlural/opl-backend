@@ -189,6 +189,27 @@ pub async fn get_users_by_ids(pool: &DatabasePool, user_ids: &[UserId]) -> Datab
     Ok(users.into_iter().map(|user| user_info(user, None)).collect())
 }
 
+pub async fn change_friend_code(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<()> {
+    query("UPDATE User SET FriendCode = UNHEX(SYS_GUID()) WHERE ID=?")
+        .bind(user_id)
+        .execute(pool.as_ref())
+        .await?;
+
+    Ok(())
+}
+
+pub async fn get_friend_code(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Option<String>> {
+    let row = query("SELECT FriendCode FROM User WHERE ID=?")
+        .bind(user_id)
+        .fetch_optional(pool.as_ref())
+        .await?;
+    
+    Ok(row.map(|row| {
+        let friend_code: Uuid = row.get("FriendCode");
+        friend_code.simple().to_string()
+    }))
+}
+
 fn user_info(row: MySqlRow, email: Option<String>) -> UserInfo {
     let user_id = row.get("ID");
     let user_name = row.get("Name");
