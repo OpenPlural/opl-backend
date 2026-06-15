@@ -2,7 +2,6 @@ use crate::model::user::UserInfo;
 use crate::model::validate_number_range;
 use serde::{Deserialize, Serialize};
 
-pub const PERMISSION_LEVEL_NONE: i8 = 0;
 pub const PERMISSION_LEVEL_MEMBERS: i8 = 1;
 pub const PERMISSION_LEVEL_FRONT: i8 = 2;
 pub const PERMISSION_LEVEL_NOTIFICATIONS: i8 = 3;
