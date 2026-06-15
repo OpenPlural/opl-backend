@@ -10,6 +10,8 @@ use sqlx::{query, Executor, Row, Statement};
 use crate::model::friend::Friend;
 use crate::model::member::MemberId;
 
+const MAX_FRONT_TEXT_LENGTH: usize = 127;
+
 pub async fn fill_front_text(pool: &DatabasePool, viewer: UserId, users: Vec<UserInfo>) -> DatabaseResult<Vec<Friend>> {
     if users.is_empty() {
         return Ok(vec![]);
@@ -44,9 +46,19 @@ SELECT f.UserId, m.Name FROM Front f JOIN Member m ON m.ID = f.MemberId WHERE f.
             map.insert(user_id, list);
         }
     }
-    Ok(users.into_iter().map(|user| Friend {
-        front_text: map.get(&user.id).map(|list| list.join(", ")),
-        user,
+    Ok(users.into_iter().map(|user| {
+        let front_text = map.get(&user.id).map(|list| list.join(", "))
+            .map(|mut front_text| {
+                if front_text.len() > MAX_FRONT_TEXT_LENGTH {
+                    front_text.truncate(front_text.floor_char_boundary(MAX_FRONT_TEXT_LENGTH));
+                    front_text.push('…');
+                }
+                front_text
+            });
+        Friend {
+            front_text,
+            user,
+        }
     }).collect())
 }
 
