@@ -222,6 +222,15 @@ pub async fn clear_field_value(pool: &DatabasePool, data_id: CustomFieldDataId, 
     Ok(())
 }
 
+pub async fn get_field_owner(pool: &DatabasePool, field_id: CustomFieldId) -> DatabaseResult<Option<UserId>> {
+    let owner = query("SELECT UserId FROM CustomField WHERE ID = ?")
+        .bind(field_id)
+        .fetch_optional(pool.as_ref())
+        .await?;
+
+    Ok(owner.map(|row| row.get("UserId")))
+}
+
 fn field(row: MySqlRow) -> CustomField {
     let id = row.get("ID");
     let user_id = row.get("UserId");

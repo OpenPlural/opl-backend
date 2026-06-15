@@ -276,6 +276,15 @@ pub async fn get_friend_privacy_buckets(pool: &DatabasePool, friend_id: UserId, 
     Ok(res.into_iter().map(simple_bucket).collect())
 }
 
+pub async fn get_privacy_bucket_owner(pool: &DatabasePool, bucket_id: PrivacyBucketId) -> DatabaseResult<Option<UserId>> {
+    let owner = query("SELECT UserId FROM PrivacyBucket WHERE ID = ?")
+        .bind(bucket_id)
+        .fetch_optional(pool.as_ref())
+        .await?;
+
+    Ok(owner.map(|row| row.get("UserId")))
+}
+
 fn bucket(row: MySqlRow, folders: Vec<MySqlRow>, members: Vec<MySqlRow>, friends: Vec<MySqlRow>) -> PrivacyBucket {
     let id = row.get("ID");
     let user_id = row.get("UserId");

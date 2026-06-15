@@ -6,6 +6,7 @@ use crate::web::{not_found, ok, ok_none, validation_error, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Json, Path};
 use actix_web::{delete, get, patch, post, put, HttpRequest};
+use crate::error::WebError;
 
 #[get("/")]
 pub async fn get_fields(req: HttpRequest, data: Data<AppState>) -> WebResult {
@@ -115,6 +116,12 @@ pub async fn create_field_value(req: HttpRequest, data: Data<AppState>, body: Js
     let mut body = body.into_inner();
     body.validate().map_err(validation_error)?;
     body.user_id = token.user_id;
+    
+    if let Some(field_owner) = crate::database::fields::get_field_owner(&data.pool, body.field_id).await.map_err(to_web_error)? {
+        if field_owner != token.user_id {
+            return Err(WebError::ResourceNotOwned);
+        }
+    }
 
     let id = crate::database::fields::create_field_value(&data.pool, &body).await.map_err(to_web_error)?;
     ok(IdResponse {

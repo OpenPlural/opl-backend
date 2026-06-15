@@ -135,6 +135,15 @@ pub async fn edit_folder(pool: &DatabasePool, folder: &Folder) -> DatabaseResult
     Ok(())
 }
 
+pub async fn get_folder_owner(pool: &DatabasePool, folder_id: FolderId) -> DatabaseResult<Option<UserId>> {
+    let owner = query("SELECT UserId FROM Folder WHERE ID = ?")
+        .bind(folder_id)
+        .fetch_optional(pool.as_ref())
+        .await?;
+
+    Ok(owner.map(|row| row.get("UserId")))
+}
+
 fn folder(row: MySqlRow) -> Folder {
     let id = row.get("ID");
     let user_id = row.get("UserId");

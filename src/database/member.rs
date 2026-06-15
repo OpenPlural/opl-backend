@@ -236,6 +236,15 @@ pub async fn edit_member_folders(pool: &DatabasePool, member_id: MemberId, user_
     Ok(())
 }
 
+pub async fn get_member_owner(pool: &DatabasePool, member_id: MemberId) -> DatabaseResult<Option<UserId>> {
+    let owner = query("SELECT UserId FROM Member WHERE ID = ?")
+        .bind(member_id)
+        .fetch_optional(pool.as_ref())
+        .await?;
+
+    Ok(owner.map(|row| row.get("UserId")))
+}
+
 fn member(row: MySqlRow, id: MemberId, folders: Vec<FolderId>) -> Member {
     let user_id = row.get("UserId");
     let name = row.get("Name");
