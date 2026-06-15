@@ -21,7 +21,7 @@ pub const SESSION_COOKIE_DOMAIN: &'static str = env!("SESSION_COOKIE_DOMAIN");
 #[cfg(debug_assertions)]
 pub const SESSION_COOKIE_SAME_SITE_POLICY: SameSite = SameSite::None;
 #[cfg(not(debug_assertions))]
-pub const SESSION_COOKIE_SAME_SITE_POLICY: SameSite = SameSite::Strict;
+pub const SESSION_COOKIE_SAME_SITE_POLICY: SameSite = SameSite::Lax;
 
 #[derive(Debug, Clone)]
 pub struct RequestToken {
