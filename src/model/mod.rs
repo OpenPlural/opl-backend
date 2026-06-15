@@ -12,6 +12,7 @@ pub mod sync;
 pub mod privacy;
 pub mod deletion;
 pub mod apikey;
+pub mod notification;
 
 #[derive(Debug, Deserialize)]
 pub struct PageQuery {

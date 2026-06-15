@@ -2,12 +2,22 @@ use sqlx::{query, Row};
 use sqlx::mysql::MySqlRow;
 use uuid::Uuid;
 use crate::database::{DatabasePool, DatabaseResult};
-use crate::model::friend::{FriendRequest, FriendSettings};
+use crate::model::friend::{FriendRequest, FriendSettings, PERMISSION_LEVEL_NOTIFICATIONS};
 use crate::model::user::UserId;
 
 pub async fn get_friend_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<UserId>> {
     let friends = query("SELECT FriendId FROM Friend WHERE UserId = ?")
         .bind(user_id)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+    Ok(friends.into_iter().map(|row| row.get(0)).collect())
+}
+
+pub async fn get_notified_friend_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<UserId>> {
+    let friends = query("SELECT f.FriendId FROM Friend f JOIN Friend s ON s.UserId = f.UserId WHERE f.UserId = ? AND f.PermissionLevel >= ? AND s.NotifyMe")
+        .bind(user_id)
+        .bind(PERMISSION_LEVEL_NOTIFICATIONS)
         .fetch_all(pool.as_ref())
         .await?;
 

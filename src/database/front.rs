@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use sqlx::Arguments;
 use anyhow::anyhow;
-use crate::database::{DatabasePool, DatabaseResult};
+use crate::database::{list_to_map, DatabasePool, DatabaseResult};
 use crate::model::front::{FrontEntry, FrontEntryId};
 use crate::model::user::{UserId, UserInfo};
 use chrono::{DateTime, Utc};
@@ -34,18 +34,7 @@ SELECT f.UserId, m.Name FROM Front f JOIN Member m ON m.ID = f.MemberId WHERE f.
     let statement = pool.prepare(&sql).await?;
     let front = statement.query_with(args).bind(viewer).fetch_all(pool.as_ref()).await?;
 
-    let mut map: HashMap<UserId, Vec<String>> = HashMap::with_capacity(users.len());
-    for row in front {
-        let user_id: UserId = row.get("UserId");
-        let name: String = row.get("Name");
-
-        if let Some(list) = map.get_mut(&user_id) {
-            list.push(name);
-        } else {
-            let list = vec![name];
-            map.insert(user_id, list);
-        }
-    }
+    let map: HashMap<UserId, Vec<String>> = list_to_map(&front, "UserId", "Name", users.len());
     Ok(users.into_iter().map(|user| {
         let front_text = map.get(&user.id).map(|list| list.join(", "))
             .map(|mut front_text| {
@@ -60,6 +49,32 @@ SELECT f.UserId, m.Name FROM Front f JOIN Member m ON m.ID = f.MemberId WHERE f.
             user,
         }
     }).collect())
+}
+
+pub async fn get_notification_front_text(pool: &DatabasePool, viewers: Vec<UserId>, user_id: UserId) -> DatabaseResult<Vec<(UserId, Option<String>)>> {
+    if viewers.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let placeholders = viewers.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
+    let sql = format!(r#"
+SELECT pf.FriendId, m.Name FROM Front f
+JOIN Member m ON m.ID = f.MemberId
+JOIN PrivacyBucketMember pm ON pm.MemberId = f.MemberId
+JOIN PrivacyBucketFriend pf ON pf.BucketId = pm.BucketId
+WHERE f.UserId = ? AND f.EndedAt IS NULL AND pf.FriendId IN ({placeholders})
+"#);
+
+    let mut args = MySqlArguments::default();
+    args.add(user_id).map_err(|e| anyhow!("{:?}", e))?;
+    for viewer in &viewers {
+        args.add(viewer).map_err(|e| anyhow!("{:?}", e))?;
+    }
+    let statement = pool.prepare(&sql).await?;
+    let front = statement.query_with(args).fetch_all(pool.as_ref()).await?;
+
+    let map: HashMap<UserId, Vec<String>> = list_to_map(&front, "FriendId", "Name", viewers.len());
+    Ok(viewers.into_iter().map(|viewer| (viewer, map.get(&viewer).map(|list| list.join(", ")))).collect())
 }
 
 pub async fn get_front_history(pool: &DatabasePool, user_id: UserId, page: u32) -> DatabaseResult<Vec<FrontEntry>> {

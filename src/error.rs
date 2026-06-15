@@ -17,6 +17,8 @@ pub enum WebError {
     InvalidToken,
     #[error("Failed to set cookie {0:?}")]
     CantSetCookie(anyhow::Error),
+    #[error("This web push endpoint is not trusted")]
+    WebPushEndpointNotTrusted,
 
     #[error("Account registration is disabled")]
     RegistrationDisabled,
@@ -61,6 +63,7 @@ impl ResponseError for WebError {
             WebError::InvalidPayload(_) => StatusCode::BAD_REQUEST,
             WebError::InvalidToken => StatusCode::UNAUTHORIZED,
             WebError::CantSetCookie(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            WebError::WebPushEndpointNotTrusted => StatusCode::FORBIDDEN,
 
             WebError::RegistrationDisabled => StatusCode::FORBIDDEN,
             WebError::UsernameAlreadyExists => StatusCode::CONFLICT,

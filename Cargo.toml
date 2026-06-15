@@ -15,6 +15,7 @@ rand = "*"
 anyhow = "*"
 thiserror = "*"
 strum_macros = "*"
+web-push = "*"
 
 [dependencies.uuid]
 version = "*"

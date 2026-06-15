@@ -6,6 +6,8 @@ mod web;
 mod model;
 mod error;
 mod middleware;
+mod notification;
+mod frontwatch;
 
 use crate::database::DatabasePool;
 use crate::middleware::authenticator_mw;
@@ -29,8 +31,10 @@ use std::time::Duration;
 use actix_web::middleware::from_fn;
 use tokio::spawn;
 use tokio::time::interval;
+use crate::frontwatch::watch_front_changes;
 use crate::web::api::apikey::{create_api_key, delete_api_key, get_api_keys};
 use crate::web::api::fields::{clear_field_value, create_field, create_field_value, delete_field, edit_field, get_field, get_field_privacy, get_field_value, get_field_values, get_fields, get_specific_field_values, reorder_fields, update_field_value};
+use crate::web::api::notification::subscribe;
 use crate::web::api::privacy::{add_privacy_bucket_custom_field, add_privacy_bucket_folder, add_privacy_bucket_friend, add_privacy_bucket_member, create_privacy_bucket, delete_privacy_bucket, edit_privacy_bucket, get_privacy_bucket, get_privacy_buckets, remove_privacy_bucket_custom_field, remove_privacy_bucket_folder, remove_privacy_bucket_friend, remove_privacy_bucket_member, reorder_privacy_buckets};
 
 #[derive(Clone)]
@@ -55,6 +59,7 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to run database migrations");
 
     let db_pool = pool.clone();
+    watch_front_changes(db_pool.clone()).await;
     spawn(async move {
         let mut interval = interval(Duration::from_hours(12));
         loop {
@@ -73,6 +78,15 @@ async fn main() -> std::io::Result<()> {
             .app_data(Data::new(AppState {
                 pool: pool.clone()
             }))
+            .wrap_fn(|req, route| {
+                println!("{} {}", req.method(), req.path());
+
+                let res = route.call(req);
+                async {
+                    let res = res.await?;
+                    Ok(res)
+                }
+            })
             .service(
                 scope("/api/v1")
                     .wrap(from_fn(authenticator_mw))
@@ -143,6 +157,10 @@ async fn main() -> std::io::Result<()> {
                             .service(get_member_front_history)
                             .service(get_member_front_entry)
                             .service(get_member_privacy)
+                    )
+                    .service(
+                        scope("/notification")
+                            .service(subscribe)
                     )
                     .service(
                         scope("/privacy")

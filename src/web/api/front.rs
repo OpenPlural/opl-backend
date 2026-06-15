@@ -59,6 +59,7 @@ pub async fn add_front_entry(req: HttpRequest, data: Data<AppState>, body: Json<
     }
 
     let id = crate::database::front::add_front_entry(&data.pool, &body).await.map_err(to_web_error)?;
+    crate::frontwatch::notify_front_change(token.user_id).await;
     ok(IdResponse {
         id
     })
@@ -71,6 +72,7 @@ pub async fn delete_front_entry(req: HttpRequest, data: Data<AppState>, path: Pa
 
     let entry_id = path.into_inner();
     crate::database::front::delete_front_entry(&data.pool, entry_id, token.user_id).await.map_err(to_web_error)?;
+    crate::frontwatch::notify_front_change(token.user_id).await;
     ok_none()
 }
 
@@ -93,6 +95,7 @@ pub async fn edit_front_entry(req: HttpRequest, data: Data<AppState>, path: Path
     }
 
     crate::database::front::edit_front_entry(&data.pool, &body).await.map_err(to_web_error)?;
+    crate::frontwatch::notify_front_change(token.user_id).await;
     ok_none()
 }
 
