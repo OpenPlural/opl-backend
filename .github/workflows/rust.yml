@@ -14,6 +14,10 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      WEB_PUSH_VAPID_PRIVATE_KEY_BASE64:
+      WEB_PUSH_VAPID_SUB:
+      WEB_PUSH_TRUSTED_ENDPOINTS:
     steps:
     - uses: actions/checkout@v4
     - name: Override with nightly toolchain
