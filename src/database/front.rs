@@ -1,41 +1,196 @@
-use crate::database::{DatabasePool, DatabaseResult};
+use std::collections::HashMap;
+use sqlx::Arguments;
+use anyhow::anyhow;
+use crate::database::{list_to_map, DatabasePool, DatabaseResult};
 use crate::model::front::{FrontEntry, FrontEntryId};
-use crate::model::user::UserId;
+use crate::model::user::{UserId, UserInfo};
 use chrono::{DateTime, Utc};
-use sqlx::mysql::MySqlRow;
-use sqlx::{query, Row};
+use sqlx::mysql::{MySqlArguments, MySqlRow};
+use sqlx::{query, Executor, Row, Statement};
+use crate::model::friend::Friend;
+use crate::model::member::MemberId;
 
-pub async fn get_current_front_entries(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<FrontEntry>> {
-    let entries = query("SELECT ID, MemberId, StartedAt, Comment, UpdatedAt FROM Front WHERE UserId = ? AND EndedAt IS NULL")
+const MAX_FRONT_TEXT_LENGTH: usize = 127;
+
+pub async fn fill_front_text(pool: &DatabasePool, viewer: UserId, users: Vec<UserInfo>) -> DatabaseResult<Vec<Friend>> {
+    if users.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let placeholders = users.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
+    let sql = format!(r#"
+SELECT f.UserId, m.Name FROM Front f JOIN Member m ON m.ID = f.MemberId WHERE f.UserId IN ({placeholders}) AND f.EndedAt IS NULL AND EXISTS (
+    SELECT 1 FROM PrivacyBucketMember pm
+             INNER JOIN PrivacyBucketFriend pf
+             ON pf.BucketId = pm.BucketId AND pf.UserId = pm.UserId
+             WHERE pm.MemberId = f.MemberId AND pf.FriendId = ?
+)
+"#);
+
+    let mut args = MySqlArguments::default();
+    for user in &users {
+        args.add(user.id).map_err(|e| anyhow!("{:?}", e))?;
+    }
+    let statement = pool.prepare(&sql).await?;
+    let front = statement.query_with(args).bind(viewer).fetch_all(pool.as_ref()).await?;
+
+    let map: HashMap<UserId, Vec<String>> = list_to_map(&front, "UserId", "Name", users.len());
+    Ok(users.into_iter().map(|user| {
+        let front_text = map.get(&user.id).map(|list| list.join(", "))
+            .map(|mut front_text| {
+                if front_text.len() > MAX_FRONT_TEXT_LENGTH {
+                    front_text.truncate(front_text.floor_char_boundary(MAX_FRONT_TEXT_LENGTH));
+                    front_text.push('…');
+                }
+                front_text
+            });
+        Friend {
+            front_text,
+            user,
+        }
+    }).collect())
+}
+
+pub async fn get_notification_front_text(pool: &DatabasePool, viewers: Vec<UserId>, user_id: UserId) -> DatabaseResult<Vec<(UserId, Option<String>)>> {
+    if viewers.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let placeholders = viewers.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
+    let sql = format!(r#"
+SELECT pf.FriendId, m.Name FROM Front f
+JOIN Member m ON m.ID = f.MemberId
+JOIN PrivacyBucketMember pm ON pm.MemberId = f.MemberId
+JOIN PrivacyBucketFriend pf ON pf.BucketId = pm.BucketId
+WHERE f.UserId = ? AND f.EndedAt IS NULL AND pf.FriendId IN ({placeholders})
+"#);
+
+    let mut args = MySqlArguments::default();
+    args.add(user_id).map_err(|e| anyhow!("{:?}", e))?;
+    for viewer in &viewers {
+        args.add(viewer).map_err(|e| anyhow!("{:?}", e))?;
+    }
+    let statement = pool.prepare(&sql).await?;
+    let front = statement.query_with(args).fetch_all(pool.as_ref()).await?;
+
+    let map: HashMap<UserId, Vec<String>> = list_to_map(&front, "FriendId", "Name", viewers.len());
+    Ok(viewers.into_iter().map(|viewer| (viewer, map.get(&viewer).map(|list| list.join(", ")))).collect())
+}
+
+pub async fn get_front_history(pool: &DatabasePool, user_id: UserId, page: u32) -> DatabaseResult<Vec<FrontEntry>> {
+    let entries = query("SELECT ID, MemberId, StartedAt, EndedAt, Comment, UpdatedAt FROM Front WHERE UserId = ? ORDER BY StartedAt DESC LIMIT ?, 50")
         .bind(user_id)
+        .bind(page * 50)
         .fetch_all(pool.as_ref())
         .await?;
 
-    Ok(entries.into_iter().map(|row| front_entry(row, user_id)).collect())
+    Ok(entries.into_iter().map(|row| {
+        let ended_at = row.get("EndedAt");
+        front_entry(row, user_id, ended_at)
+    }).collect())
 }
 
-pub async fn get_front_entry_by_id(pool: &DatabasePool, entry_id: FrontEntryId, user_id: UserId) -> DatabaseResult<Option<FrontEntry>> {
-    let row = query("SELECT ID, MemberId, StartedAt, Comment, UpdatedAt FROM Front WHERE ID = ? AND UserId = ?")
-        .bind(entry_id)
+pub async fn get_front_history_of_member(pool: &DatabasePool, user_id: UserId, member_id: MemberId, page: u32) -> DatabaseResult<Vec<FrontEntry>> {
+    let entries = query("SELECT ID, MemberId, StartedAt, EndedAt, Comment, UpdatedAt FROM Front WHERE UserId = ? AND MemberId = ? ORDER BY StartedAt DESC LIMIT ?, 50")
         .bind(user_id)
+        .bind(member_id)
+        .bind(page * 50)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+    Ok(entries.into_iter().map(|row| {
+        let ended_at = row.get("EndedAt");
+        front_entry(row, user_id, ended_at)
+    }).collect())
+}
+
+pub async fn get_current_front_entries(pool: &DatabasePool, user_id: UserId, friend_viewer: Option<UserId>) -> DatabaseResult<Vec<FrontEntry>> {
+    let entries = if let Some(friend_viewer) = friend_viewer {
+        query(r#"
+SELECT ID, MemberId, StartedAt, Comment, UpdatedAt
+FROM Front f
+WHERE UserId = ? AND EndedAt IS NULL AND EXISTS (
+    SELECT 1 FROM PrivacyBucketMember pm
+             INNER JOIN PrivacyBucketFriend pf
+             ON pf.BucketId = pm.BucketId AND pf.UserId = pm.UserId
+             WHERE pm.MemberId = f.MemberId AND pf.FriendId = ?
+)
+"#)
+            .bind(user_id)
+            .bind(friend_viewer)
+            .fetch_all(pool.as_ref())
+            .await?
+    } else {
+        query("SELECT ID, MemberId, StartedAt, Comment, UpdatedAt FROM Front WHERE UserId = ? AND EndedAt IS NULL")
+            .bind(user_id)
+            .fetch_all(pool.as_ref())
+            .await?
+    };
+
+    Ok(entries.into_iter().map(|row| front_entry(row, user_id, None)).collect())
+}
+
+pub async fn get_front_entry_by_id(pool: &DatabasePool, entry_id: FrontEntryId, user_id: UserId, friend_viewer: Option<UserId>) -> DatabaseResult<Option<FrontEntry>> {
+    let entry = if let Some(friend_viewer) = friend_viewer {
+        query(r#"
+SELECT ID, MemberId, StartedAt, EndedAt, Comment, UpdatedAt
+FROM Front f
+WHERE ID = ? AND UserId = ? AND EXISTS (
+    SELECT 1 FROM PrivacyBucketMember pm
+             INNER JOIN PrivacyBucketFriend pf
+             ON pf.BucketId = pm.BucketId AND pf.UserId = pm.UserId
+             WHERE pm.MemberId = f.MemberId AND pf.FriendId = ?
+)
+"#)
+            .bind(entry_id)
+            .bind(user_id)
+            .bind(friend_viewer)
+            .fetch_optional(pool.as_ref())
+            .await?
+    } else {
+        query("SELECT ID, MemberId, StartedAt, EndedAt, Comment, UpdatedAt FROM Front WHERE ID = ? AND UserId = ?")
+            .bind(entry_id)
+            .bind(user_id)
+            .fetch_optional(pool.as_ref())
+            .await?
+    };
+    Ok(entry.map(|row| {
+        let ended_at = row.get("EndedAt");
+        front_entry(row, user_id, ended_at)
+    }))
+}
+
+pub async fn get_active_front_entry_by_member(pool: &DatabasePool, user_id: UserId, member_id: MemberId) -> DatabaseResult<Option<FrontEntry>> {
+    let entry = query("SELECT ID, MemberId, StartedAt, Comment, UpdatedAt FROM Front WHERE UserId = ? AND MemberId = ? AND EndedAt IS NULL")
+        .bind(user_id)
+        .bind(member_id)
         .fetch_optional(pool.as_ref())
         .await?;
 
-    Ok(row.map(|row| front_entry(row, user_id)))
+    Ok(entry.map(|row| front_entry(row, user_id, None)))
 }
 
-pub async fn add_front_entry(pool: &DatabasePool, entry: &FrontEntry, started_at: DateTime<Utc>, ended_at: Option<DateTime<Utc>>) -> DatabaseResult<()> {
-    query("INSERT INTO Front (ID, UserId, MemberId, StartedAt, EndedAt, Comment) VALUES (?, ?, ?, ?, ?, ?)")
-        .bind(entry.id)
-        .bind(entry.user)
-        .bind(entry.member)
-        .bind(started_at)
-        .bind(ended_at)
-        .bind(entry.comment.clone())
-        .execute(pool.as_ref())
+pub async fn is_fronting(pool: &DatabasePool, user_id: UserId, member_id: MemberId) -> DatabaseResult<bool> {
+    let res = query("SELECT 1 FROM Front WHERE UserId = ? AND MemberId = ? AND EndedAt IS NULL")
+        .bind(user_id)
+        .bind(member_id)
+        .fetch_optional(pool.as_ref())
         .await?;
 
-    Ok(())
+    Ok(res.is_some())
+}
+
+pub async fn add_front_entry(pool: &DatabasePool, entry: &FrontEntry) -> DatabaseResult<FrontEntryId> {
+    let id = query("INSERT INTO Front (UserId, MemberId, StartedAt, EndedAt, Comment) VALUES (?, ?, ?, ?, ?) RETURNING ID")
+        .bind(entry.user_id)
+        .bind(entry.member_id)
+        .bind(entry.started_at)
+        .bind(entry.ended_at)
+        .bind(entry.comment.clone())
+        .fetch_one(pool.as_ref())
+        .await?;
+
+    Ok(id.get(0))
 }
 
 pub async fn delete_front_entry(pool: &DatabasePool, entry_id: FrontEntryId, user_id: UserId) -> DatabaseResult<()> {
@@ -48,28 +203,28 @@ pub async fn delete_front_entry(pool: &DatabasePool, entry_id: FrontEntryId, use
     Ok(())
 }
 
-pub async fn edit_front_entry(pool: &DatabasePool, entry: &FrontEntry, started_at: DateTime<Utc>, ended_at: Option<DateTime<Utc>>) -> DatabaseResult<()> {
+pub async fn edit_front_entry(pool: &DatabasePool, entry: &FrontEntry) -> DatabaseResult<()> {
     query("UPDATE Front SET MemberId = ?, StartedAt = ?, EndedAt = ?, Comment = ? WHERE ID = ? AND UserId = ?")
-        .bind(entry.member)
-        .bind(started_at)
-        .bind(ended_at)
+        .bind(entry.member_id)
+        .bind(entry.started_at)
+        .bind(entry.ended_at)
         .bind(entry.comment.clone())
         .bind(entry.id)
-        .bind(entry.user)
+        .bind(entry.user_id)
         .execute(pool.as_ref())
         .await?;
 
     Ok(())
 }
 
-fn front_entry(row: MySqlRow, user_id: UserId) -> FrontEntry {
+fn front_entry(row: MySqlRow, user_id: UserId, ended_at: Option<DateTime<Utc>>) -> FrontEntry {
     let started_at: DateTime<Utc> = row.get("StartedAt");
     FrontEntry {
         id: row.get("ID"),
-        user: user_id,
-        member: row.get("MemberId"),
-        started_at: started_at.to_rfc3339(),
-        ended_at: None,
+        user_id,
+        member_id: row.get("MemberId"),
+        started_at,
+        ended_at,
         comment: row.get("Comment"),
         updated_at: row.get("UpdatedAt"),
     }

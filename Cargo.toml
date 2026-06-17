@@ -6,21 +6,20 @@ license = "GPL-3"
 
 [dependencies]
 actix-web = "*"
-actix-web-httpauth = "*"
 serde = "*"
 serde_json = "*"
 argon2 = "*"
+sha2 = "*"
+base64 = "*"
 rand = "*"
+anyhow = "*"
 thiserror = "*"
 strum_macros = "*"
+web-push = "*"
 
 [dependencies.uuid]
 version = "*"
 features = ["v4"]
-
-[dependencies.anyhow]
-version = "*"
-features = ["backtrace"]
 
 [dependencies.chrono]
 version = "*"
@@ -28,7 +27,7 @@ features = ["serde"]
 
 [dependencies.sqlx]
 version = "*"
-features = ["mysql", "runtime-tokio", "chrono", "uuid"]
+features = ["mysql", "runtime-tokio", "chrono", "uuid", "migrate"]
 
 [dependencies.tokio]
 version = "*"

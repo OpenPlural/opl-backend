@@ -1,0 +1,24 @@
+CREATE TABLE User
+(
+    ID          INTEGER            NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    Name        VARCHAR(50)        NOT NULL UNIQUE,
+    Password    VARCHAR(255)       NOT NULL,
+    Email       VARCHAR(255)                DEFAULT NULL,
+    CreatedAt   TIMESTAMP          NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    AvatarUrl   VARCHAR(255)                DEFAULT NULL,
+    Description TEXT                        DEFAULT NULL,
+    Color       MEDIUMINT UNSIGNED NOT NULL DEFAULT 16777215,
+    System      BOOLEAN            NOT NULL,
+    FriendCode  BINARY(16)         NOT NULL DEFAULT RANDOM_BYTES(16) UNIQUE
+);
+
+CREATE TABLE Session
+(
+    ID         INTEGER      NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    UserId     INTEGER      NOT NULL,
+    Token      VARCHAR(255) NOT NULL UNIQUE,
+    Name       VARCHAR(255) NOT NULL,
+    CreatedAt  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    LastUsedAt TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    FOREIGN KEY (UserId) REFERENCES User (ID) ON DELETE CASCADE
+);
