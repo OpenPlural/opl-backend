@@ -20,6 +20,7 @@ pub struct UserInfo {
     pub email: Option<String>,
     pub avatar: Option<String>,
     pub description: Option<String>,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub color: u32,
     pub system: bool,
 }

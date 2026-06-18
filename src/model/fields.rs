@@ -14,6 +14,7 @@ pub struct CustomField {
     pub id: CustomFieldId,
     #[serde(skip)]
     pub user_id: UserId,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub sort: u16,
     pub name: String,
     #[serde(rename = "dataType")]
@@ -45,9 +46,9 @@ pub struct CustomFieldDataValue {
     pub id: CustomFieldDataId,
     #[serde(skip)]
     pub user_id: UserId,
-    #[serde(rename = "fieldId")]
+    #[serde(rename = "fieldId", deserialize_with = "crate::numberstring::deserialize")]
     pub field_id: CustomFieldId,
-    #[serde(rename = "memberId")]
+    #[serde(rename = "memberId", deserialize_with = "crate::numberstring::deserialize")]
     pub member_id: MemberId,
     pub value: String,
     #[serde(rename = "updatedAt", skip_deserializing)]

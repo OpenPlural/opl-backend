@@ -12,7 +12,7 @@ pub struct FrontEntry {
     pub id: FrontEntryId,
     #[serde(skip)]
     pub user_id: UserId,
-    #[serde(rename = "member")]
+    #[serde(rename = "member", deserialize_with = "crate::numberstring::deserialize")]
     pub member_id: MemberId,
     #[serde(rename = "startedAt")]
     pub started_at: DateTime<Utc>,
