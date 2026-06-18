@@ -41,6 +41,7 @@ impl LoginRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct DeleteRequest {
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub id: UserId,
     pub password: String,
 }
@@ -54,6 +55,7 @@ impl DeleteRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct ChangePasswordRequest {
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub id: UserId,
     #[serde(rename = "oldPassword")]
     pub old_password: String,
@@ -71,6 +73,7 @@ impl ChangePasswordRequest {
 
 #[derive(Debug, Serialize)]
 pub struct AccountInfo {
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub session: SessionId,
     #[serde(rename = "createdAt")]
     pub created_at: DateTime<Utc>,

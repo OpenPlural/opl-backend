@@ -3,7 +3,7 @@ use argon2::password_hash::{Error, SaltString};
 use argon2::password_hash::rand_core::OsRng;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD_NO_PAD;
-use rand::{rng, Rng};
+use rand::{rng, RngExt};
 use rand::distr::Alphanumeric;
 use sha2::{Digest, Sha256};
 use tokio::sync::OnceCell;

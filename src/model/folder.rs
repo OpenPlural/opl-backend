@@ -11,11 +11,12 @@ pub struct Folder {
     pub id: FolderId,
     #[serde(skip)]
     pub user_id: UserId,
-    #[serde(rename = "parentId")]
+    #[serde(rename = "parentId", deserialize_with = "crate::numberstring::deserialize_opt")]
     pub parent_id: Option<FolderId>,
     pub name: String,
     pub description: Option<String>,
     pub emoji: Option<String>,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub color: u32,
     #[serde(rename = "createdAt", skip_deserializing)]
     pub created_at: DateTime<Utc>,

@@ -12,10 +12,12 @@ pub struct PrivacyBucket {
     pub id: PrivacyBucketId,
     #[serde(skip)]
     pub user_id: UserId,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub sort: u16,
     pub name: String,
     pub description: Option<String>,
     pub emoji: Option<String>,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub color: u32,
     #[serde(skip_deserializing)]
     pub folders: Vec<FolderId>,

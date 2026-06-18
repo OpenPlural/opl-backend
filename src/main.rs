@@ -8,6 +8,7 @@ mod error;
 mod middleware;
 mod notification;
 mod frontwatch;
+mod numberstring;
 
 use crate::database::DatabasePool;
 use crate::middleware::authenticator_mw;
