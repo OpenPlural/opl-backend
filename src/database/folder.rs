@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use crate::database::{DatabasePool, DatabaseResult};
+use crate::database::{DatabaseExecutor, DatabasePool, DatabaseResult};
 use crate::model::folder::{Folder, FolderId};
 use crate::model::user::UserId;
 use sqlx::mysql::MySqlRow;
@@ -96,7 +96,7 @@ pub async fn get_folders_by_ids(pool: &DatabasePool, folder_ids: &Vec<FolderId>,
     Ok(folders.into_iter().map(folder).collect())
 }
 
-pub async fn create_folder(pool: &DatabasePool, folder: &Folder) -> DatabaseResult<FolderId> {
+pub async fn create_folder<'a, E: DatabaseExecutor<'a>>(executor: E, folder: &Folder) -> DatabaseResult<FolderId> {
     let id = query("INSERT INTO Folder (UserId, ParentId, Name, Description, Emoji, Color) VALUES (?, ?, ?, ?, ?, ?) RETURNING ID")
         .bind(folder.user_id)
         .bind(folder.parent_id)
@@ -104,10 +104,20 @@ pub async fn create_folder(pool: &DatabasePool, folder: &Folder) -> DatabaseResu
         .bind(&folder.description)
         .bind(&folder.emoji)
         .bind(folder.color)
-        .fetch_one(pool.as_ref())
+        .fetch_one(executor)
         .await?;
 
     Ok(id.get(0))
+}
+
+pub async fn change_parent<'a, E: DatabaseExecutor<'a>>(executor: E, folder_id: FolderId, parent_id: Option<FolderId>) -> DatabaseResult<()> {
+    query("UPDATE Folder SET ParentId = ? WHERE ID = ?")
+        .bind(parent_id)
+        .bind(folder_id)
+        .execute(executor)
+        .await?;
+
+    Ok(())
 }
 
 pub async fn delete_folder(pool: &DatabasePool, folder_id: FolderId, user_id: UserId) -> DatabaseResult<()> {

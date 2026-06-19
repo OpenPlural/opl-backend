@@ -66,7 +66,7 @@ pub async fn create_member(req: HttpRequest, data: Data<AppState>, body: Json<Me
     body.validate().map_err(validation_error)?;
     body.user_id = token.user_id;
 
-    let id = crate::database::member::create_member(&data.pool, &body).await.map_err(to_web_error)?;
+    let id = crate::database::member::create_member(&*data.pool, &body).await.map_err(to_web_error)?;
     ok(IdResponse {
         id
     })

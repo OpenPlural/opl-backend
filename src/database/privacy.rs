@@ -1,4 +1,4 @@
-use crate::database::{DatabasePool, DatabaseResult};
+use crate::database::{DatabaseExecutor, DatabasePool, DatabaseResult};
 use crate::model::privacy::{PrivacyBucket, PrivacyBucketId, SimplePrivacyBucket};
 use crate::model::user::UserId;
 use sqlx::mysql::MySqlRow;
@@ -94,14 +94,14 @@ pub async fn get_privacy_bucket(pool: &DatabasePool, bucket_id: PrivacyBucketId,
     Ok(Some(bucket(res.unwrap(), folders, members, friends)))
 }
 
-pub async fn create_privacy_bucket(pool: &DatabasePool, bucket: &PrivacyBucket) -> DatabaseResult<PrivacyBucketId> {
+pub async fn create_privacy_bucket<'a, E: DatabaseExecutor<'a>>(executor: E, bucket: &PrivacyBucket) -> DatabaseResult<PrivacyBucketId> {
     let id = query("INSERT INTO PrivacyBucket (UserId, Sort, Name, Description, Emoji) VALUES (?, ?, ?, ?, ?) RETURNING ID")
         .bind(bucket.user_id)
         .bind(bucket.sort)
         .bind(&bucket.name)
         .bind(&bucket.description)
         .bind(&bucket.emoji)
-        .fetch_one(pool.as_ref())
+        .fetch_one(executor)
         .await?;
 
     Ok(id.get(0))
@@ -148,12 +148,12 @@ pub async fn reorder_privacy_buckets(pool: &DatabasePool, ids: Vec<PrivacyBucket
     Ok(())
 }
 
-pub async fn add_privacy_bucket_folder(pool: &DatabasePool, bucket_id: PrivacyBucketId, user_id: UserId, folder_id: FolderId) -> DatabaseResult<()> {
+pub async fn add_privacy_bucket_folder<'a, E: DatabaseExecutor<'a>>(executor: E, bucket_id: PrivacyBucketId, user_id: UserId, folder_id: FolderId) -> DatabaseResult<()> {
     query("INSERT INTO PrivacyBucketFolder (UserId, BucketId, FolderId) VALUES (?, ?, ?)")
         .bind(user_id)
         .bind(bucket_id)
         .bind(folder_id)
-        .execute(pool.as_ref())
+        .execute(executor)
         .await?;
 
     Ok(())
@@ -180,12 +180,12 @@ pub async fn get_folder_privacy_buckets(pool: &DatabasePool, folder_id: FolderId
     Ok(res.into_iter().map(simple_bucket).collect())
 }
 
-pub async fn add_privacy_bucket_member(pool: &DatabasePool, bucket_id: PrivacyBucketId, user_id: UserId, member_id: MemberId) -> DatabaseResult<()> {
+pub async fn add_privacy_bucket_member<'a, E: DatabaseExecutor<'a>>(executor: E, bucket_id: PrivacyBucketId, user_id: UserId, member_id: MemberId) -> DatabaseResult<()> {
     query("INSERT INTO PrivacyBucketMember (UserId, BucketId, MemberId) VALUES (?, ?, ?)")
         .bind(user_id)
         .bind(bucket_id)
         .bind(member_id)
-        .execute(pool.as_ref())
+        .execute(executor)
         .await?;
 
     Ok(())
@@ -212,12 +212,12 @@ pub async fn get_member_privacy_buckets(pool: &DatabasePool, member_id: MemberId
     Ok(res.into_iter().map(simple_bucket).collect())
 }
 
-pub async fn add_privacy_bucket_custom_field(pool: &DatabasePool, bucket_id: PrivacyBucketId, user_id: UserId, field_id: CustomFieldId) -> DatabaseResult<()> {
+pub async fn add_privacy_bucket_custom_field<'a, E: DatabaseExecutor<'a>>(executor: E, bucket_id: PrivacyBucketId, user_id: UserId, field_id: CustomFieldId) -> DatabaseResult<()> {
     query("INSERT INTO PrivacyBucketCustomField (UserId, BucketId, FieldId) VALUES (?, ?, ?)")
         .bind(user_id)
         .bind(bucket_id)
         .bind(field_id)
-        .execute(pool.as_ref())
+        .execute(executor)
         .await?;
 
     Ok(())

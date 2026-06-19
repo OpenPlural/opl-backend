@@ -37,7 +37,7 @@ pub async fn create_field(req: HttpRequest, data: Data<AppState>, body: Json<Cus
     body.validate().map_err(validation_error)?;
     body.user_id = token.user_id;
 
-    let id = crate::database::fields::create_field(&data.pool, &body).await.map_err(to_web_error)?;
+    let id = crate::database::fields::create_field(&*data.pool, &body).await.map_err(to_web_error)?;
     ok(IdResponse {
         id
     })
@@ -123,7 +123,7 @@ pub async fn create_field_value(req: HttpRequest, data: Data<AppState>, body: Js
         }
     }
 
-    let id = crate::database::fields::create_field_value(&data.pool, &body).await.map_err(to_web_error)?;
+    let id = crate::database::fields::create_field_value(&*data.pool, &body).await.map_err(to_web_error)?;
     ok(IdResponse {
         id
     })
