@@ -1,4 +1,4 @@
-use crate::database::{DatabasePool, DatabaseResult};
+use crate::database::{DatabaseExecutor, DatabasePool, DatabaseResult};
 use crate::model::fields::{CustomField, CustomFieldDataId, CustomFieldDataType, CustomFieldDataValue, CustomFieldId, ViewedCustomFieldDataValue};
 use crate::model::member::MemberId;
 use crate::model::user::UserId;
@@ -44,13 +44,13 @@ pub async fn get_field_by_id(pool: &DatabasePool, field_id: CustomFieldId, user_
     Ok(res.map(field))
 }
 
-pub async fn create_field(pool: &DatabasePool, field: &CustomField) -> DatabaseResult<CustomFieldId> {
+pub async fn create_field<'a, E: DatabaseExecutor<'a>>(executor: E, field: &CustomField) -> DatabaseResult<CustomFieldId> {
     let id = query("INSERT INTO CustomField (UserId, Sort, Name, DataType) VALUES (?, ?, ?, ?) RETURNING ID")
         .bind(field.user_id)
         .bind(field.sort)
         .bind(&field.name)
         .bind(field.data_type as u8)
-        .fetch_one(pool.as_ref())
+        .fetch_one(executor)
         .await?;
 
     Ok(id.get(0))
@@ -189,13 +189,13 @@ pub async fn get_field_value_by_id(pool: &DatabasePool, value_id: CustomFieldDat
     Ok(res.map(field_value))
 }
 
-pub async fn create_field_value(pool: &DatabasePool, value: &CustomFieldDataValue) -> DatabaseResult<CustomFieldDataId> {
+pub async fn create_field_value<'a, E: DatabaseExecutor<'a>>(executor: E, value: &CustomFieldDataValue) -> DatabaseResult<CustomFieldDataId> {
     let id = query("INSERT INTO CustomFieldData (UserId, FieldId, MemberId, DataValue) VALUES (?, ?, ?, ?) RETURNING ID")
         .bind(value.user_id)
         .bind(value.field_id)
         .bind(value.member_id)
         .bind(&value.value)
-        .fetch_one(pool.as_ref())
+        .fetch_one(executor)
         .await?;
 
     Ok(id.get(0))

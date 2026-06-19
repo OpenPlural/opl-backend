@@ -1,4 +1,4 @@
-use crate::database::{DatabasePool, DatabaseResult};
+use crate::database::{DatabaseExecutor, DatabasePool, DatabaseResult};
 use crate::model::folder::FolderId;
 use crate::model::member::{Member, MemberId};
 use crate::model::user::UserId;
@@ -174,7 +174,7 @@ WHERE MemberId = ? AND UserId = ? AND EXISTS (
     Ok(Some(member(res, member_id, folders.into_iter().map(|row| row.get(0)).collect())))
 }
 
-pub async fn create_member(pool: &DatabasePool, member: &Member) -> DatabaseResult<MemberId> {
+pub async fn create_member<'a, E: DatabaseExecutor<'a>>(executor: E, member: &Member) -> DatabaseResult<MemberId> {
     let id = query("INSERT INTO Member (UserId, Name, Pronouns, AvatarUrl, Description, Color, Custom) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING ID")
         .bind(member.user_id)
         .bind(&member.name)
@@ -183,7 +183,7 @@ pub async fn create_member(pool: &DatabasePool, member: &Member) -> DatabaseResu
         .bind(&member.description)
         .bind(member.color)
         .bind(member.custom)
-        .fetch_one(pool.as_ref())
+        .fetch_one(executor)
         .await?;
 
     Ok(id.get(0))
@@ -224,15 +224,21 @@ pub async fn edit_member_folders(pool: &DatabasePool, member_id: MemberId, user_
         .await?;
 
     for folder_id in folder_ids {
-        query("INSERT INTO MemberFolder (UserId, MemberId, FolderId) VALUES (?, ?, ?)")
-            .bind(user_id)
-            .bind(member_id)
-            .bind(folder_id)
-            .execute(&mut *tx)
-            .await?;
+        add_member_folder(&mut *tx, member_id, user_id, *folder_id).await?;
     }
 
     tx.commit().await?;
+    Ok(())
+}
+
+pub async fn add_member_folder<'a, E: DatabaseExecutor<'a>>(executor: E, member_id: MemberId, user_id: UserId, folder_id: FolderId) -> DatabaseResult<()> {
+    query("INSERT INTO MemberFolder (UserId, MemberId, FolderId) VALUES (?, ?, ?)")
+        .bind(user_id)
+        .bind(member_id)
+        .bind(folder_id)
+        .execute(executor)
+        .await?;
+    
     Ok(())
 }
 

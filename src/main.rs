@@ -1,4 +1,5 @@
 #![feature(fn_traits)]
+#![feature(trait_alias)]
 
 mod database;
 mod security;
@@ -35,6 +36,7 @@ use tokio::time::interval;
 use crate::frontwatch::watch_front_changes;
 use crate::web::api::apikey::{create_api_key, delete_api_key, get_api_keys};
 use crate::web::api::fields::{clear_field_value, create_field, create_field_value, delete_field, edit_field, get_field, get_field_privacy, get_field_value, get_field_values, get_fields, get_specific_field_values, reorder_fields, update_field_value};
+use crate::web::api::import::import;
 use crate::web::api::notification::subscribe;
 use crate::web::api::privacy::{add_privacy_bucket_custom_field, add_privacy_bucket_folder, add_privacy_bucket_friend, add_privacy_bucket_member, create_privacy_bucket, delete_privacy_bucket, edit_privacy_bucket, get_privacy_bucket, get_privacy_buckets, remove_privacy_bucket_custom_field, remove_privacy_bucket_folder, remove_privacy_bucket_friend, remove_privacy_bucket_member, reorder_privacy_buckets};
 
@@ -144,6 +146,10 @@ async fn main() -> std::io::Result<()> {
                             .service(add_front_entry)
                             .service(delete_front_entry)
                             .service(edit_front_entry)
+                    )
+                    .service(
+                        scope("/import")
+                            .service(import)
                     )
                     .service(
                         scope("/member")

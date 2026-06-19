@@ -51,7 +51,7 @@ pub async fn create_folder(req: HttpRequest, data: Data<AppState>, body: Json<Fo
     body.validate().map_err(validation_error)?;
     body.user_id = token.user_id;
     
-    let id = crate::database::folder::create_folder(&data.pool, &body).await.map_err(to_web_error)?;
+    let id = crate::database::folder::create_folder(&*data.pool, &body).await.map_err(to_web_error)?;
     ok(IdResponse {
         id
     })

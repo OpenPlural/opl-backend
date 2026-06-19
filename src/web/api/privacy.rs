@@ -42,7 +42,7 @@ pub async fn create_privacy_bucket(req: HttpRequest, data: Data<AppState>, body:
     body.validate().map_err(validation_error)?;
     body.user_id = token.user_id;
     
-    let id = crate::database::privacy::create_privacy_bucket(&data.pool, &body).await.map_err(to_web_error)?;
+    let id = crate::database::privacy::create_privacy_bucket(&*data.pool, &body).await.map_err(to_web_error)?;
     ok(IdResponse {
         id
     })
@@ -98,7 +98,7 @@ pub async fn add_privacy_bucket_folder(req: HttpRequest, data: Data<AppState>, p
             if folder_owner != token.user_id {
                 return Err(WebError::ResourceNotOwned);
             }
-            crate::database::privacy::add_privacy_bucket_folder(&data.pool, bucket_id, token.user_id, folder_id).await.map_err(to_web_error)?;
+            crate::database::privacy::add_privacy_bucket_folder(&*data.pool, bucket_id, token.user_id, folder_id).await.map_err(to_web_error)?;
             return ok_none();
         }
     }
@@ -119,7 +119,7 @@ pub async fn add_privacy_bucket_member(req: HttpRequest, data: Data<AppState>, p
             if member_owner != token.user_id {
                 return Err(WebError::ResourceNotOwned);
             }
-            crate::database::privacy::add_privacy_bucket_member(&data.pool, bucket_id, token.user_id, member_id).await.map_err(to_web_error)?;
+            crate::database::privacy::add_privacy_bucket_member(&*data.pool, bucket_id, token.user_id, member_id).await.map_err(to_web_error)?;
             return ok_none();
         }
     }
@@ -140,7 +140,7 @@ pub async fn add_privacy_bucket_custom_field(req: HttpRequest, data: Data<AppSta
             if field_owner != token.user_id {
                 return Err(WebError::ResourceNotOwned);
             }
-            crate::database::privacy::add_privacy_bucket_custom_field(&data.pool, bucket_id, token.user_id, field_id).await.map_err(to_web_error)?;
+            crate::database::privacy::add_privacy_bucket_custom_field(&*data.pool, bucket_id, token.user_id, field_id).await.map_err(to_web_error)?;
             return ok_none();
         }
     }
