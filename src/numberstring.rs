@@ -10,7 +10,6 @@ where
 {
     match NumberString::<T>::deserialize(deserializer)? {
         NumberString::String(str) => {
-            println!("string is {}", str);
             str.parse::<T>().map_err(serde::de::Error::custom)
         },
         NumberString::Number(num) => Ok(num),
@@ -25,7 +24,6 @@ where
 {
     match Option::<NumberString<T>>::deserialize(deserializer)? {
         Some(NumberString::String(str)) => {
-            println!("opt string is {}", str);
             Ok(Some(str.parse::<T>().map_err(serde::de::Error::custom)?))
         },
         Some(NumberString::Number(num)) => Ok(Some(num)),
