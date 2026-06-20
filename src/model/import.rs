@@ -11,6 +11,7 @@ pub struct Import {
     pub fields: Option<Vec<ImportCustomField>>,
     pub folders: Option<Vec<ImportFolder>>,
     pub members: Option<Vec<ImportMember>>,
+    pub truncate: bool,
 }
 
 #[derive(Deserialize)]
@@ -23,6 +24,18 @@ pub struct ImportPrivacyBucket {
     pub emoji: Option<String>,
     #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub color: u32,
+}
+
+impl ImportPrivacyBucket {
+    pub fn truncate(&mut self) {
+        self.name.truncate(self.name.floor_char_boundary(255));
+        if let Some(description) = &mut self.description {
+            description.truncate(description.floor_char_boundary(65535));
+        }
+        if let Some(emoji) = &mut self.emoji {
+            emoji.truncate(emoji.floor_char_boundary(30));
+        }
+    }
 }
 
 impl Into<PrivacyBucket> for ImportPrivacyBucket {
@@ -53,6 +66,12 @@ pub struct ImportCustomField {
     pub privacy: Vec<String>,
 }
 
+impl ImportCustomField {
+    pub fn truncate(&mut self) {
+        self.name.truncate(self.name.floor_char_boundary(255));
+    }
+}
+
 impl Into<CustomField> for ImportCustomField {
     fn into(self) -> CustomField {
         CustomField {
@@ -77,6 +96,18 @@ pub struct ImportFolder {
     #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub color: u32,
     pub privacy: Vec<String>,
+}
+
+impl ImportFolder {
+    pub fn truncate(&mut self) {
+        self.name.truncate(self.name.floor_char_boundary(255));
+        if let Some(description) = &mut self.description {
+            description.truncate(description.floor_char_boundary(65535));
+        }
+        if let Some(emoji) = &mut self.emoji {
+            emoji.truncate(emoji.floor_char_boundary(30));
+        }
+    }
 }
 
 impl Into<Folder> for ImportFolder {
@@ -108,6 +139,21 @@ pub struct ImportMember {
     pub folders: Vec<String>,
     pub fields: HashMap<String, String>,
     pub privacy: Vec<String>,
+}
+
+impl ImportMember {
+    pub fn truncate(&mut self) {
+        self.name.truncate(self.name.floor_char_boundary(255));
+        if let Some(pronouns) = &mut self.pronouns {
+            pronouns.truncate(pronouns.floor_char_boundary(255));
+        }
+        if let Some(avatar) = &mut self.avatar {
+            avatar.truncate(avatar.floor_char_boundary(255));
+        }
+        if let Some(description) = &mut self.description {
+            description.truncate(description.floor_char_boundary(65535));
+        }
+    }
 }
 
 impl Into<Member> for ImportMember {

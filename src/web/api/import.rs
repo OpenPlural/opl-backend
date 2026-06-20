@@ -21,7 +21,10 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
     {
         let privacy_mapping = if let Some(privacy) = body.privacy {
             let mut privacy_mapping = HashMap::new();
-            for bucket in privacy {
+            for mut bucket in privacy {
+                if body.truncate {
+                    bucket.truncate();
+                }
                 let import_id = bucket.id.clone();
                 let mut actual_bucket: PrivacyBucket = bucket.into();
                 actual_bucket.validate().map_err(validation_error)?;
@@ -36,7 +39,10 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
 
         let field_mapping = if let Some(fields) = body.fields {
             let mut field_mapping = HashMap::new();
-            for field in fields {
+            for mut field in fields {
+                if body.truncate {
+                    field.truncate();
+                }
                 let import_id = field.id.clone();
                 let privacy = field.privacy.clone();
                 let mut actual_field: CustomField = field.into();
@@ -60,7 +66,10 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
 
         let folder_mapping = if let Some(folders) = body.folders {
             let mut folder_mapping = HashMap::new();
-            for folder in folders {
+            for mut folder in folders {
+                if body.truncate {
+                    folder.truncate();
+                }
                 let import_id = folder.id.clone();
                 let parent_id = folder.parent_id.clone();
                 let privacy = folder.privacy.clone();
@@ -91,7 +100,10 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
         };
 
         if let Some(members) = body.members {
-            for member in members {
+            for mut member in members {
+                if body.truncate {
+                    member.truncate();
+                }
                 let privacy = member.privacy.clone();
                 let fields = member.fields.clone();
                 let folders = member.folders.clone();
@@ -109,8 +121,11 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
                 }
 
                 if let Some(field_mapping) = &field_mapping {
-                    for (field_id, field_value) in fields {
+                    for (field_id, mut field_value) in fields {
                         if let Some(field_id) = field_mapping.get(&field_id) {
+                            if body.truncate {
+                                field_value.truncate(field_value.floor_char_boundary(65535));
+                            }
                             let value = CustomFieldDataValue {
                                 id: 0,
                                 user_id: token.user_id,
