@@ -19,7 +19,7 @@ pub async fn fill_front_text(pool: &DatabasePool, viewer: UserId, users: Vec<Use
 
     let placeholders = users.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
     let sql = format!(r#"
-SELECT f.UserId, m.Name FROM Front f JOIN Member m ON m.ID = f.MemberId WHERE f.UserId IN ({placeholders}) AND f.EndedAt IS NULL AND EXISTS (
+SELECT DISTINCT f.UserId, m.Name FROM Front f JOIN Member m ON m.ID = f.MemberId WHERE f.UserId IN ({placeholders}) AND f.EndedAt IS NULL AND EXISTS (
     SELECT 1 FROM PrivacyBucketMember pm
              INNER JOIN PrivacyBucketFriend pf
              ON pf.BucketId = pm.BucketId AND pf.UserId = pm.UserId
@@ -58,7 +58,7 @@ pub async fn get_notification_front_text(pool: &DatabasePool, viewers: Vec<UserI
 
     let placeholders = viewers.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
     let sql = format!(r#"
-SELECT pf.FriendId, m.Name FROM Front f
+SELECT DISTINCT pf.FriendId, m.Name FROM Front f
 JOIN Member m ON m.ID = f.MemberId
 JOIN PrivacyBucketMember pm ON pm.MemberId = f.MemberId
 JOIN PrivacyBucketFriend pf ON pf.BucketId = pm.BucketId
