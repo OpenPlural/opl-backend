@@ -175,13 +175,14 @@ WHERE MemberId = ? AND UserId = ? AND EXISTS (
 }
 
 pub async fn create_member<'a, E: DatabaseExecutor<'a>>(executor: E, member: &Member) -> DatabaseResult<MemberId> {
-    let id = query("INSERT INTO Member (UserId, Name, Pronouns, AvatarUrl, Description, Color, Custom) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING ID")
+    let id = query("INSERT INTO Member (UserId, Name, Pronouns, AvatarUrl, Description, Color, Archived, Custom) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING ID")
         .bind(member.user_id)
         .bind(&member.name)
         .bind(&member.pronouns)
         .bind(&member.avatar)
         .bind(&member.description)
         .bind(member.color)
+        .bind(member.archived)
         .bind(member.custom)
         .fetch_one(executor)
         .await?;
