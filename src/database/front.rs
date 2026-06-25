@@ -51,7 +51,7 @@ SELECT DISTINCT f.UserId, m.Name FROM Front f JOIN Member m ON m.ID = f.MemberId
     }).collect())
 }
 
-pub async fn get_notification_front_text(pool: &DatabasePool, viewers: Vec<UserId>, user_id: UserId) -> DatabaseResult<Vec<(UserId, Option<String>)>> {
+pub async fn get_notification_front_text(pool: &DatabasePool, viewers: Vec<(UserId, bool)>, user_id: UserId) -> DatabaseResult<Vec<(UserId, bool, Option<String>)>> {
     if viewers.is_empty() {
         return Ok(vec![]);
     }
@@ -67,14 +67,14 @@ WHERE f.UserId = ? AND f.EndedAt IS NULL AND pf.FriendId IN ({placeholders})
 
     let mut args = MySqlArguments::default();
     args.add(user_id).map_err(|e| anyhow!("{:?}", e))?;
-    for viewer in &viewers {
+    for (viewer, _) in &viewers {
         args.add(viewer).map_err(|e| anyhow!("{:?}", e))?;
     }
     let statement = pool.prepare(&sql).await?;
     let front = statement.query_with(args).fetch_all(pool.as_ref()).await?;
 
     let map: HashMap<UserId, Vec<String>> = list_to_map(&front, "FriendId", "Name", viewers.len());
-    Ok(viewers.into_iter().map(|viewer| (viewer, map.get(&viewer).map(|list| list.join(", ")))).collect())
+    Ok(viewers.into_iter().map(|(viewer, b)| (viewer, b, map.get(&viewer).map(|list| list.join(", ")))).collect())
 }
 
 pub async fn get_front_history(pool: &DatabasePool, user_id: UserId, page: u32) -> DatabaseResult<Vec<FrontEntry>> {

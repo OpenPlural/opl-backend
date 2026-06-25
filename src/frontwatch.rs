@@ -48,14 +48,19 @@ pub async fn watch_front_changes(database_pool: DatabasePool) {
                 if let Ok(Some(username)) = crate::database::user::get_username(&database_pool, user_id).await {
                     if let Ok(notified_friends) = crate::database::friend::get_notified_friend_ids(&database_pool, user_id).await {
                         if let Ok(front_text) = crate::database::front::get_notification_front_text(&database_pool, notified_friends, user_id).await {
-                            for (notify_user, front_text) in front_text {
+                            for (notify_user, replace_front_change, front_text) in front_text {
                                 if let Some(mut front_text) = front_text {
                                     if front_text.len() > MAX_FRONT_TEXT_LENGTH {
                                         front_text.truncate(front_text.floor_char_boundary(MAX_FRONT_TEXT_LENGTH));
                                         front_text.push('…');
                                     }
                                     if let Ok(true) = crate::database::notification::set_last_notification(&database_pool, user_id, notify_user, &front_text).await {
-                                        let _ = crate::notification::notify_user(&database_pool, notify_user, &username, &front_text, None).await;
+                                        let tag = if replace_front_change {
+                                            Some(username.clone())
+                                        } else {
+                                            None
+                                        };
+                                        let _ = crate::notification::notify_user(&database_pool, notify_user, &username, &front_text, tag).await;
                                     }
                                 }
                             }

@@ -14,14 +14,18 @@ pub async fn get_friend_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseRes
     Ok(friends.into_iter().map(|row| row.get(0)).collect())
 }
 
-pub async fn get_notified_friend_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<UserId>> {
-    let friends = query("SELECT f.FriendId FROM Friend f JOIN Friend s ON s.UserId = f.UserId WHERE f.UserId = ? AND f.PermissionLevel >= ? AND s.NotifyMe")
+pub async fn get_notified_friend_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<(UserId, bool)>> {
+    let friends = query("SELECT s.UserId, ns.ReplaceFrontChange FROM Friend f JOIN Friend s ON s.UserId = f.FriendId LEFT JOIN NotificationSettings ns ON ns.UserId = f.FriendId WHERE f.UserId = ? AND f.PermissionLevel >= ? AND s.NotifyMe")
         .bind(user_id)
         .bind(PERMISSION_LEVEL_NOTIFICATIONS)
         .fetch_all(pool.as_ref())
         .await?;
 
-    Ok(friends.into_iter().map(|row| row.get(0)).collect())
+    Ok(friends.into_iter().map(|row| {
+        let user_id: UserId = row.get(0);
+        let replace_front_change: Option<bool> = row.get(1);
+        (user_id, replace_front_change.unwrap_or(false))
+    }).collect())
 }
 
 pub async fn get_incoming_friend_requests(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<FriendRequest>> {
