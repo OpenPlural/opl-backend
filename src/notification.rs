@@ -83,7 +83,7 @@ async fn send_push_notification(
 
     let mut builder = WebPushMessageBuilder::new(&subscription_info);
     builder.set_payload(ContentEncoding::Aes128Gcm, payload.as_bytes());
-    builder.set_ttl(600);
+    builder.set_ttl(1800);
 
     let mut vapid = VapidSignatureBuilder::from_base64(WEB_PUSH_VAPID_PRIVATE_KEY, &subscription_info)?;
     vapid.add_claim("sub", WEB_PUSH_VAPID_SUB);
