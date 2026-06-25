@@ -43,12 +43,12 @@ pub async fn notify_user(
     user_id: UserId,
     title: &str,
     body: &str,
-    tag: &str,
+    tag: Option<String>,
 ) -> Result<(), anyhow::Error> {
     if cfg!(not(debug_assertions)) {
         let subscriptions = crate::database::notification::get_subscriptions(pool, user_id).await?;
         for subscription in subscriptions {
-            if let Err(err) = send_push_notification(subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth, title, body, tag).await {
+            if let Err(err) = send_push_notification(subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth, title, body, &tag).await {
                 if matches!(err, WebPushError::InvalidUri | WebPushError::EndpointNotValid(_) | WebPushError::EndpointNotFound(_)) {
                     let _ = crate::database::notification::remove_subscription(pool, subscription.id).await?;
                 }
@@ -64,7 +64,7 @@ async fn send_push_notification(
     auth: String,
     title: &str,
     body: &str,
-    tag: &str,
+    tag: &Option<String>,
 ) -> Result<(), WebPushError> {
     let subscription_info = SubscriptionInfo {
         endpoint,
@@ -83,7 +83,7 @@ async fn send_push_notification(
 
     let mut builder = WebPushMessageBuilder::new(&subscription_info);
     builder.set_payload(ContentEncoding::Aes128Gcm, payload.as_bytes());
-    builder.set_ttl(600);
+    builder.set_ttl(1800);
 
     let mut vapid = VapidSignatureBuilder::from_base64(WEB_PUSH_VAPID_PRIVATE_KEY, &subscription_info)?;
     vapid.add_claim("sub", WEB_PUSH_VAPID_SUB);
