@@ -95,6 +95,7 @@ pub struct ImportFolder {
     pub emoji: Option<String>,
     #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub color: u32,
+    pub sort: u16,
     pub privacy: Vec<String>,
 }
 
@@ -117,6 +118,7 @@ impl Into<Folder> for ImportFolder {
             description: self.description,
             emoji: self.emoji,
             color: self.color,
+            sort: self.sort,
             id: 0,
             user_id: 0,
             parent_id: None,
@@ -136,6 +138,7 @@ pub struct ImportMember {
     pub color: u32,
     pub archived: bool,
     pub custom: bool,
+    pub sort: u16,
     pub folders: Vec<String>,
     pub fields: HashMap<String, String>,
     pub privacy: Vec<String>,
@@ -166,6 +169,7 @@ impl Into<Member> for ImportMember {
             color: self.color,
             archived: self.archived,
             custom: self.custom,
+            sort: self.sort,
             id: 0,
             user_id: 0,
             folders: vec![],
