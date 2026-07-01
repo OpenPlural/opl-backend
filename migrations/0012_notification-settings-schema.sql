@@ -1,6 +1,0 @@
-CREATE TABLE NotificationSettings
-(
-    UserId             INTEGER NOT NULL PRIMARY KEY,
-    ReplaceFrontChange BOOLEAN NOT NULL DEFAULT FALSE,
-    FOREIGN KEY (UserId) REFERENCES User (ID) ON DELETE CASCADE
-);
