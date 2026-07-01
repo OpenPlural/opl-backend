@@ -47,18 +47,22 @@ pub async fn watch_front_changes(database_pool: DatabasePool) {
             for user_id in notify_users {
                 if let Ok(Some(username)) = crate::database::user::get_username(&database_pool, user_id).await {
                     if let Ok(notified_friends) = crate::database::friend::get_notified_friend_ids(&database_pool, user_id).await {
-                        if let Ok(front_text) = crate::database::front::get_notification_front_text(&database_pool, notified_friends, user_id).await {
-                            for (notify_user, front_text) in front_text {
-                                if let Some(mut front_text) = front_text {
-                                    if front_text.len() > MAX_FRONT_TEXT_LENGTH {
-                                        front_text.truncate(front_text.floor_char_boundary(MAX_FRONT_TEXT_LENGTH));
-                                        front_text.push('…');
-                                    }
-                                    if let Ok(true) = crate::database::notification::set_last_notification(&database_pool, user_id, notify_user, &front_text).await {
-                                        let _ = crate::notification::notify_user(&database_pool, notify_user, &username, &front_text, None).await;
-                                    }
+                        if let Ok(front_text) = crate::database::front::get_notification_front_text(&database_pool, notified_friends, user_id).await {for (notify_user, notify_with_tag, front_text) in front_text {
+                            if let Some(mut front_text) = front_text {
+                                if front_text.len() > MAX_FRONT_TEXT_LENGTH {
+                                    front_text.truncate(front_text.floor_char_boundary(MAX_FRONT_TEXT_LENGTH));
+                                    front_text.push('…');
+                                }
+                                if let Ok(true) = crate::database::notification::set_last_notification(&database_pool, user_id, notify_user, &front_text).await {
+                                    let tag = if notify_with_tag {
+                                        Some(format!("front-{notify_user}"))
+                                    } else {
+                                        None
+                                    };
+                                    let _ = crate::notification::notify_user(&database_pool, notify_user, &username, &front_text, tag).await;
                                 }
                             }
+                        }
                         }
                     }
                 }

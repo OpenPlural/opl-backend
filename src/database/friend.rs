@@ -14,14 +14,19 @@ pub async fn get_friend_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseRes
     Ok(friends.into_iter().map(|row| row.get(0)).collect())
 }
 
-pub async fn get_notified_friend_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<UserId>> {
-    let friends = query("SELECT f.FriendId FROM Friend f JOIN Friend s ON s.UserId = f.UserId WHERE f.UserId = ? AND f.PermissionLevel >= ? AND s.NotifyMe")
+pub async fn get_notified_friend_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<(UserId, bool)>> {
+    let friends = query("SELECT f.FriendId, s.NotifyWithTag FROM Friend f JOIN Friend s ON s.UserId = f.UserId WHERE f.UserId = ? AND f.PermissionLevel >= ? AND s.NotifyMe")
         .bind(user_id)
         .bind(PERMISSION_LEVEL_NOTIFICATIONS)
         .fetch_all(pool.as_ref())
         .await?;
 
-    Ok(friends.into_iter().map(|row| row.get(0)).collect())
+    Ok(friends.into_iter().map(|row| {
+        let user_id: UserId = row.get(0);
+        let notify_with_tag: bool = row.get(1);
+
+        (user_id, notify_with_tag)
+    }).collect())
 }
 
 pub async fn get_incoming_friend_requests(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<FriendRequest>> {
@@ -116,7 +121,7 @@ pub async fn remove_friend(pool: &DatabasePool, user1: UserId, user2: UserId) ->
 }
 
 pub async fn get_friend_settings(pool: &DatabasePool, user_id: UserId, friend_id: UserId) -> DatabaseResult<Option<FriendSettings>> {
-    let settings = query("SELECT PermissionLevel, NotifyMe FROM Friend WHERE UserId = ? AND FriendId = ?")
+    let settings = query("SELECT PermissionLevel, NotifyMe, NotifyWithTag FROM Friend WHERE UserId = ? AND FriendId = ?")
         .bind(user_id)
         .bind(friend_id)
         .fetch_optional(pool.as_ref())
@@ -126,18 +131,21 @@ pub async fn get_friend_settings(pool: &DatabasePool, user_id: UserId, friend_id
     Ok(settings.map(|row| {
         let permission_level: i8 = row.get("PermissionLevel");
         let notify_me: bool = row.get("NotifyMe");
+        let notify_with_tag: bool = row.get("NotifyWithTag");
 
         FriendSettings {
             permission_level,
             notify_me,
+            notify_with_tag,
         }
     }))
 }
 
 pub async fn update_friend_settings(pool: &DatabasePool, user_id: UserId, friend_id: UserId, settings: FriendSettings) -> DatabaseResult<()> {
-    query("UPDATE Friend SET PermissionLevel = ?, NotifyMe = ? WHERE UserId = ? AND FriendId = ?")
+    query("UPDATE Friend SET PermissionLevel = ?, NotifyMe = ?, NotifyWithTag = ? WHERE UserId = ? AND FriendId = ?")
         .bind(settings.permission_level)
         .bind(settings.notify_me)
+        .bind(settings.notify_with_tag)
         .bind(user_id)
         .bind(friend_id)
         .execute(pool.as_ref())
