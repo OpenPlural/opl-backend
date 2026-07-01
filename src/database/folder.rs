@@ -15,7 +15,7 @@ pub async fn get_folder_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseRes
 }
 
 pub async fn get_updated_folders(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<Folder>> {
-    let updated = query("SELECT ID, UserId, ParentId, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE UserId = ? AND UpdatedAt > ?")
+    let updated = query("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE UserId = ? AND UpdatedAt > ?")
         .bind(user_id)
         .bind(newer_than)
         .fetch_all(pool.as_ref())
@@ -27,7 +27,7 @@ pub async fn get_updated_folders(pool: &DatabasePool, user_id: UserId, newer_tha
 pub async fn get_folders(pool: &DatabasePool, user_id: UserId, friend_viewer: Option<UserId>) -> DatabaseResult<Vec<Folder>> {
     let folders = if let Some(friend_viewer) = friend_viewer {
         query(r#"
-SELECT ID, UserId, ParentId, Name, Description, Emoji, Color, CreatedAt, UpdatedAt
+SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt
 FROM Folder f
 WHERE UserId = ? AND EXISTS (
     SELECT 1 FROM PrivacyBucketFolder pfo
@@ -41,7 +41,7 @@ WHERE UserId = ? AND EXISTS (
             .fetch_all(pool.as_ref())
             .await?
     } else {
-        query("SELECT ID, UserId, ParentId, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE UserId = ?")
+        query("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE UserId = ?")
             .bind(user_id)
             .fetch_all(pool.as_ref())
             .await?
@@ -53,7 +53,7 @@ WHERE UserId = ? AND EXISTS (
 pub async fn get_folder_by_id(pool: &DatabasePool, folder_id: FolderId, user_id: UserId, friend_viewer: Option<UserId>) -> DatabaseResult<Option<Folder>> {
     let res = if let Some(friend_viewer) = friend_viewer {
         query(r#"
-SELECT ID, UserId, ParentId, Name, Description, Emoji, Color, CreatedAt, UpdatedAt
+SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt
 FROM Folder f
 WHERE ID = ? AND UserId = ? AND EXISTS (
     SELECT 1 FROM PrivacyBucketFolder pfo
@@ -68,7 +68,7 @@ WHERE ID = ? AND UserId = ? AND EXISTS (
             .fetch_optional(pool.as_ref())
             .await?
     } else {
-        query("SELECT ID, UserId, ParentId, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE ID = ? AND UserId = ?")
+        query("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE ID = ? AND UserId = ?")
             .bind(folder_id)
             .bind(user_id)
             .fetch_optional(pool.as_ref())
@@ -83,7 +83,7 @@ pub async fn get_folders_by_ids(pool: &DatabasePool, folder_ids: &Vec<FolderId>,
         return Ok(vec![]);
     }
     let placeholders = folder_ids.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
-    let sql = format!("SELECT ID, UserId, ParentId, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE ID IN ({placeholders}) AND UserId = ?");
+    let sql = format!("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE ID IN ({placeholders}) AND UserId = ?");
     let mut query = query(sql.as_str());
     for id in folder_ids {
         query = query.bind(id);
