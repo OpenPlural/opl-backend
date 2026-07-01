@@ -12,7 +12,7 @@ pub struct FriendSettings {
     pub permission_level: i8,
     #[serde(rename = "notifyMe")]
     pub notify_me: bool,
-    #[serde(rename = "notifyWithTag", default)]
+    #[serde(rename = "notifyWithTag")]
     pub notify_with_tag: bool,
 }
 
