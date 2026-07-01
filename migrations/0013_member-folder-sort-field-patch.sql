@@ -1,0 +1,11 @@
+ALTER TABLE Member
+    ADD COLUMN Sort
+        SMALLINT UNSIGNED NOT NULL
+        DEFAULT 0
+        AFTER UserId;
+
+ALTER TABLE Folder
+    ADD COLUMN Sort
+        SMALLINT UNSIGNED NOT NULL
+        DEFAULT 0
+        AFTER UserId;

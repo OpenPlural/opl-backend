@@ -16,7 +16,7 @@ pub async fn get_member_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseRes
 }
 
 pub async fn get_updated_members(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<Member>> {
-    let updated = query("SELECT ID, UserId, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom FROM Member WHERE UserId = ? AND UpdatedAt > ?")
+    let updated = query("SELECT ID, UserId, Sort, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom FROM Member WHERE UserId = ? AND UpdatedAt > ?")
         .bind(user_id)
         .bind(newer_than)
         .fetch_all(pool.as_ref())
@@ -53,7 +53,7 @@ pub async fn get_updated_members(pool: &DatabasePool, user_id: UserId, newer_tha
 pub async fn get_members(pool: &DatabasePool, user_id: UserId, friend_viewer: Option<UserId>) -> DatabaseResult<Vec<Member>> {
     let members = if let Some(friend_viewer) = friend_viewer {
         query(r#"
-SELECT UserId, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom, ID
+SELECT UserId, Sort, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom, ID
 FROM Member m
 WHERE UserId = ? AND EXISTS (
     SELECT 1 FROM PrivacyBucketMember pm
@@ -121,7 +121,7 @@ WHERE MemberId IN ({placeholders}) AND UserId = ? AND EXISTS (
 pub async fn get_member_by_id(pool: &DatabasePool, member_id: MemberId, user_id: UserId, friend_viewer: Option<UserId>) -> DatabaseResult<Option<Member>> {
     let res = if let Some(friend_viewer) = friend_viewer {
         query(r#"
-SELECT UserId, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom
+SELECT UserId, Sort, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom
 FROM Member m
 WHERE ID = ? AND UserId = ? AND EXISTS (
     SELECT 1 FROM PrivacyBucketMember pm
@@ -136,7 +136,7 @@ WHERE ID = ? AND UserId = ? AND EXISTS (
             .fetch_optional(pool.as_ref())
             .await?
     } else {
-        query("SELECT UserId, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom FROM Member WHERE ID = ? AND UserId = ?")
+        query("SELECT UserId, Sort, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom FROM Member WHERE ID = ? AND UserId = ?")
             .bind(member_id)
             .bind(user_id)
             .fetch_optional(pool.as_ref())
@@ -175,8 +175,9 @@ WHERE MemberId = ? AND UserId = ? AND EXISTS (
 }
 
 pub async fn create_member<'a, E: DatabaseExecutor<'a>>(executor: E, member: &Member) -> DatabaseResult<MemberId> {
-    let id = query("INSERT INTO Member (UserId, Name, Pronouns, AvatarUrl, Description, Color, Archived, Custom) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING ID")
+    let id = query("INSERT INTO Member (UserId, Sort, Name, Pronouns, AvatarUrl, Description, Color, Archived, Custom) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING ID")
         .bind(member.user_id)
+        .bind(member.sort)
         .bind(&member.name)
         .bind(&member.pronouns)
         .bind(&member.avatar)
@@ -201,7 +202,8 @@ pub async fn delete_member(pool: &DatabasePool, member_id: MemberId, user_id: Us
 }
 
 pub async fn edit_member(pool: &DatabasePool, member: &Member) -> DatabaseResult<()> {
-    query("UPDATE Member SET Name = ?, Pronouns = ?, AvatarUrl = ?, Description = ?, Color = ? WHERE ID = ? AND UserId = ?")
+    query("UPDATE Member SET Sort = ?, Name = ?, Pronouns = ?, AvatarUrl = ?, Description = ?, Color = ? WHERE ID = ? AND UserId = ?")
+        .bind(member.sort)
         .bind(&member.name)
         .bind(&member.pronouns)
         .bind(&member.avatar)
@@ -254,6 +256,7 @@ pub async fn get_member_owner(pool: &DatabasePool, member_id: MemberId) -> Datab
 
 fn member(row: MySqlRow, id: MemberId, folders: Vec<FolderId>) -> Member {
     let user_id = row.get("UserId");
+    let sort = row.get("Sort");
     let name = row.get("Name");
     let pronouns = row.get("Pronouns");
     let avatar = row.get("AvatarUrl");
@@ -267,6 +270,7 @@ fn member(row: MySqlRow, id: MemberId, folders: Vec<FolderId>) -> Member {
     Member {
         id,
         user_id,
+        sort,
         name,
         pronouns,
         avatar,

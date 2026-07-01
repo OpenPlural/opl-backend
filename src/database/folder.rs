@@ -97,9 +97,10 @@ pub async fn get_folders_by_ids(pool: &DatabasePool, folder_ids: &Vec<FolderId>,
 }
 
 pub async fn create_folder<'a, E: DatabaseExecutor<'a>>(executor: E, folder: &Folder) -> DatabaseResult<FolderId> {
-    let id = query("INSERT INTO Folder (UserId, ParentId, Name, Description, Emoji, Color) VALUES (?, ?, ?, ?, ?, ?) RETURNING ID")
+    let id = query("INSERT INTO Folder (UserId, ParentId, Sort, Name, Description, Emoji, Color) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING ID")
         .bind(folder.user_id)
         .bind(folder.parent_id)
+        .bind(folder.sort)
         .bind(&folder.name)
         .bind(&folder.description)
         .bind(&folder.emoji)
@@ -131,8 +132,9 @@ pub async fn delete_folder(pool: &DatabasePool, folder_id: FolderId, user_id: Us
 }
 
 pub async fn edit_folder(pool: &DatabasePool, folder: &Folder) -> DatabaseResult<()> {
-    query("UPDATE Folder SET ParentId = ?, Name = ?, Description = ?, Emoji = ?, Color = ? WHERE ID = ? AND UserId = ?")
+    query("UPDATE Folder SET ParentId = ?, Sort = ?, Name = ?, Description = ?, Emoji = ?, Color = ? WHERE ID = ? AND UserId = ?")
         .bind(folder.parent_id)
+        .bind(folder.sort)
         .bind(&folder.name)
         .bind(&folder.description)
         .bind(&folder.emoji)
@@ -158,6 +160,7 @@ fn folder(row: MySqlRow) -> Folder {
     let id = row.get("ID");
     let user_id = row.get("UserId");
     let parent_id = row.get("ParentId");
+    let sort = row.get("Sort");
     let name = row.get("Name");
     let description = row.get("Description");
     let emoji = row.get("Emoji");
@@ -169,6 +172,7 @@ fn folder(row: MySqlRow) -> Folder {
         id,
         user_id,
         parent_id,
+        sort,
         name,
         description,
         emoji,

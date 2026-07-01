@@ -11,6 +11,7 @@ pub struct Folder {
     pub id: FolderId,
     #[serde(skip)]
     pub user_id: UserId,
+    pub sort: u16,
     #[serde(rename = "parentId", deserialize_with = "crate::numberstring::deserialize_opt")]
     pub parent_id: Option<FolderId>,
     pub name: String,
