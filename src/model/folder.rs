@@ -28,6 +28,7 @@ pub struct Folder {
 #[derive(Debug, Serialize)]
 pub struct ViewedFolder {
     pub id: FolderId,
+    pub sort: u16,
     #[serde(rename = "parentId")]
     pub parent_id: Option<FolderId>,
     pub name: String,
@@ -40,6 +41,7 @@ impl From<Folder> for ViewedFolder {
     fn from(folder: Folder) -> Self {
         Self {
             id: folder.id,
+            sort: folder.sort,
             parent_id: folder.parent_id,
             name: folder.name,
             description: folder.description,

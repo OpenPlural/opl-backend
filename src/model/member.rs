@@ -34,6 +34,7 @@ pub struct Member {
 #[derive(Debug, Serialize)]
 pub struct ViewedMember {
     pub id: MemberId,
+    pub sort: u16,
     pub name: String,
     pub pronouns: Option<String>,
     pub avatar: Option<String>,
@@ -47,6 +48,7 @@ impl From<Member> for ViewedMember {
     fn from(member: Member) -> Self {
         Self {
             id: member.id,
+            sort: member.sort,
             name: member.name,
             pronouns: member.pronouns,
             avatar: member.avatar,
