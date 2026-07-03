@@ -9,6 +9,8 @@ use crate::model::user::UserInfo;
 #[derive(Debug, Deserialize)]
 pub struct SyncQuery {
     pub since: DateTime<Utc>,
+    #[serde(default)]
+    pub absolute: bool
 }
 
 #[derive(Debug, Serialize)]
