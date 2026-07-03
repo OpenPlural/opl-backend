@@ -18,15 +18,23 @@ pub async fn add_subscription(pool: &DatabasePool, user_id: UserId, session_id: 
 }
 
 pub async fn set_last_notification(pool: &DatabasePool, fronting_user_id: UserId, receiving_user_id: UserId, front_text: &str) -> DatabaseResult<bool> {
-    let res = query("INSERT INTO LastNotification (FrontingUserId, ReceivingUserId, FrontText) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE FrontText = ?")
+    let res = query("SELECT 1 FROM LastNotification WHERE FrontingUserId = ? AND ReceivingUserId = ? AND FrontText = ?")
+        .bind(fronting_user_id)
+        .bind(receiving_user_id)
+        .bind(front_text)
+        .fetch_optional(pool.as_ref())
+        .await?;
+    if res.is_some() {
+        return Ok(true);
+    }
+    query("INSERT INTO LastNotification (FrontingUserId, ReceivingUserId, FrontText) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE FrontText = ?")
         .bind(fronting_user_id)
         .bind(receiving_user_id)
         .bind(front_text)
         .bind(front_text)
         .execute(pool.as_ref())
         .await?;
-
-    Ok(res.rows_affected() > 0) // true if there was a different front text previously
+    Ok(false)
 }
 
 pub async fn remove_subscription(pool: &DatabasePool, id: i64) -> DatabaseResult<()> {
