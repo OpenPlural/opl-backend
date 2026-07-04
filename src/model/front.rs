@@ -37,10 +37,6 @@ pub struct ViewedFrontEntry {
     pub id: FrontEntryId,
     #[serde(rename = "member")]
     pub member_id: MemberId,
-    #[serde(rename = "startedAt")]
-    pub started_at: DateTime<Utc>,
-    #[serde(rename = "endedAt")]
-    pub ended_at: Option<DateTime<Utc>>,
     pub comment: Option<String>,
 }
 
@@ -49,8 +45,6 @@ impl From<FrontEntry> for ViewedFrontEntry {
         Self {
             id: entry.id,
             member_id: entry.member_id,
-            started_at: entry.started_at,
-            ended_at: entry.ended_at,
             comment: entry.comment,
         }
     }
