@@ -15,9 +15,11 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      SESSION_COOKIE_DOMAIN:
       WEB_PUSH_VAPID_PRIVATE_KEY_BASE64:
       WEB_PUSH_VAPID_SUB:
       WEB_PUSH_TRUSTED_ENDPOINTS:
+      ADMIN_SECRET_TOKEN_SHA:
     steps:
     - uses: actions/checkout@v4
     - name: Override with nightly toolchain

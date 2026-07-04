@@ -7,12 +7,15 @@ use rand::{rng, RngExt};
 use rand::distr::Alphanumeric;
 use sha2::{Digest, Sha256};
 use tokio::sync::OnceCell;
+use crate::error::WebError;
 
 static PASSWORD_HASH_ALGORITHM: OnceCell<Argon2> = OnceCell::const_new();
 
 pub const SESSION_TOKEN_LENGTH: usize = 128;
 pub const API_KEY_TOKEN_LENGTH: usize = 128;
 const SHA256_PEPPER: &'static str = "OpenPlural";
+
+const ADMIN_SECRET_TOKEN_SHA: &'static str = env!("ADMIN_SECRET_TOKEN_SHA");
 
 async fn get_hash_algorithm() -> &'static Argon2<'static> {
     PASSWORD_HASH_ALGORITHM.get_or_init(|| async {
@@ -45,4 +48,13 @@ pub fn sha256(input: &str) -> String {
     let full_input = format!("{}{}{}", SHA256_PEPPER, input, SHA256_PEPPER);
     let hash = Sha256::digest(full_input.as_bytes());
     BASE64_STANDARD_NO_PAD.encode(hash)
+}
+
+pub fn verify_admin_token(input: &str) -> Result<(), WebError> {
+    let hash = sha256(input);
+    if hash == ADMIN_SECRET_TOKEN_SHA {
+        Ok(())
+    } else {
+        Err(WebError::InvalidToken)
+    }
 }

@@ -20,7 +20,7 @@ use crate::web::api::member::{create_member, delete_member, edit_member, edit_me
 use crate::web::api::session::{get_sessions, invalidate_current_session, invalidate_session};
 use crate::web::api::sync::sync;
 use crate::web::api::user::{change_friend_code, edit_user, get_self_user, get_user, get_username};
-use crate::web::auth::{change_password, delete_account, login, register};
+use crate::web::auth::{change_password, delete_account, login, register, reset_password};
 use crate::web::version::version;
 use actix_web::dev::Service;
 use actix_web::web::{scope, Data};
@@ -34,6 +34,7 @@ use actix_web::middleware::from_fn;
 use tokio::spawn;
 use tokio::time::interval;
 use crate::frontwatch::watch_front_changes;
+use crate::web::admin::make_password_reset_token;
 use crate::web::api::apikey::{create_api_key, delete_api_key, get_api_keys};
 use crate::web::api::fields::{clear_field_value, create_field, create_field_value, delete_field, edit_field, get_field, get_field_privacy, get_field_value, get_field_values, get_fields, get_specific_field_values, reorder_fields, update_field_value};
 use crate::web::api::import::import;
@@ -64,7 +65,7 @@ async fn main() -> std::io::Result<()> {
     let db_pool = pool.clone();
     watch_front_changes(db_pool.clone()).await;
     spawn(async move {
-        let mut interval = interval(Duration::from_hours(12));
+        let mut interval = interval(Duration::from_hours(6));
         loop {
             interval.tick().await;
             if let Err(err) = database::session::clear_expired_sessions(&db_pool).await {
@@ -72,6 +73,9 @@ async fn main() -> std::io::Result<()> {
             }
             if let Err(err) = database::deletion::clear_old_deletions(&db_pool).await {
                 eprintln!("Failed to clear old deletions: {:?}", err);
+            }
+            if let Err(err) = database::user::clear_expired_password_reset_tokens(&db_pool).await {
+                eprintln!("Failed to clear expired password reset tokens: {:?}", err);
             }
         }
     });
@@ -211,6 +215,11 @@ async fn main() -> std::io::Result<()> {
                     .service(login)
                     .service(delete_account)
                     .service(change_password)
+                    .service(reset_password)
+            )
+            .service(
+                scope("/admin")
+                    .service(make_password_reset_token)
             )
             .service(version)
     }).bind(("0.0.0.0", 11675))?.run().await

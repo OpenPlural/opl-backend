@@ -7,6 +7,7 @@ use crate::middleware::make_session_cookie;
 pub mod auth;
 pub mod version;
 pub mod api;
+pub mod admin;
 
 pub(in crate::web) type WebResult = Result<HttpResponse, WebError>;
 

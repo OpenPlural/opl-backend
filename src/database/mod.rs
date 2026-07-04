@@ -10,6 +10,7 @@ pub mod deletion;
 pub mod time;
 pub mod apikey;
 pub mod notification;
+pub mod admin;
 
 use std::collections::HashMap;
 use std::hash::Hash;

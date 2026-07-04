@@ -14,6 +14,7 @@ pub mod deletion;
 pub mod apikey;
 pub mod notification;
 pub mod import;
+pub mod admin;
 
 #[derive(Debug, Deserialize)]
 pub struct PageQuery {

@@ -1,6 +1,6 @@
 use crate::database::to_web_error;
 use crate::error::WebError;
-use crate::model::auth::{ChangePasswordRequest, DeleteRequest, LoginRequest, RegisterRequest};
+use crate::model::auth::{ChangePasswordRequest, DeleteRequest, LoginRequest, RegisterRequest, ResetPasswordRequest};
 use crate::web::{ok_none, validation_error, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Json};
@@ -58,6 +58,18 @@ pub async fn change_password(req: Json<ChangePasswordRequest>, data: Data<AppSta
     req.validate().map_err(validation_error)?;
 
     if crate::database::user::change_password(&data.pool, req.id, &req.old_password, &req.new_password).await.map_err(to_web_error)? {
+        ok_none()
+    } else {
+        Err(WebError::InvalidCredentials)
+    }
+}
+
+#[post("/reset-password")]
+pub async fn reset_password(req: Json<ResetPasswordRequest>, data: Data<AppState>) -> WebResult {
+    let req = req.into_inner();
+    req.validate().map_err(validation_error)?;
+
+    if crate::database::user::reset_password(&data.pool, &req.name, &req.reset_token, &req.new_password).await.map_err(to_web_error)? {
         ok_none()
     } else {
         Err(WebError::InvalidCredentials)
