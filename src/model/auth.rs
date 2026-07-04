@@ -71,6 +71,22 @@ impl ChangePasswordRequest {
     }
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ResetPasswordRequest {
+    pub name: String,
+    #[serde(rename = "resetToken")]
+    pub reset_token: String,
+    #[serde(rename = "newPassword")]
+    pub new_password: String,
+}
+
+impl ResetPasswordRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        validate_string_length("ResetPasswordRequest", "newPassword", &self.new_password, Some(MIN_PASSWORD_LENGTH), None, false)?;
+        Ok(())
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct AccountInfo {
     #[serde(deserialize_with = "crate::numberstring::deserialize")]

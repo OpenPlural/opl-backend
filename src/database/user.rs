@@ -56,18 +56,15 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
             let friend_code = friend_code.simple().to_string();
             let email = user.get("Email");
             let user = user_info(user, email);
-            Ok(Some((AccountInfo {
+            return Ok(Some((AccountInfo {
                 session: token_id,
                 created_at,
                 friend_code,
                 user,
-            }, token)))
-        } else {
-            Ok(None)
+            }, token)));
         }
-    } else {
-        Ok(None)
     }
+    Ok(None)
 }
 
 pub async fn delete(pool: &DatabasePool, id: UserId, password: &str) -> DatabaseResult<bool> {
@@ -83,13 +80,10 @@ pub async fn delete(pool: &DatabasePool, id: UserId, password: &str) -> Database
                 .bind(id)
                 .execute(pool.as_ref())
                 .await?;
-            Ok(true)
-        } else {
-            Ok(false)
+            return Ok(true);
         }
-    } else {
-        Ok(false)
     }
+    Ok(false)
 }
 
 pub async fn change_password(pool: &DatabasePool, id: UserId, old_password: &str, new_password: &str) -> DatabaseResult<bool> {
@@ -108,13 +102,36 @@ pub async fn change_password(pool: &DatabasePool, id: UserId, old_password: &str
                 .bind(id)
                 .execute(pool.as_ref())
                 .await?;
-            Ok(true)
-        } else {
-            Ok(false)
+            return Ok(true);
         }
-    } else {
-        Ok(false)
     }
+    Ok(false)
+}
+
+pub async fn reset_password(pool: &DatabasePool, name: &str, reset_token: &str, new_password: &str) -> DatabaseResult<bool> {
+    let user = query("SELECT ID, PasswordResetToken FROM User WHERE Name=?")
+        .bind(name)
+        .fetch_optional(pool.as_ref())
+        .await?;
+
+    if let Some(user) = user {
+        let id: UserId = user.get("ID");
+        let token: Option<String> = user.get("PasswordResetToken");
+        if let Some(token) = token {
+            let reset_token = sha256(reset_token);
+            if reset_token == token {
+                let password_hash = hash(new_password).await.map_err(|e| anyhow!("{:?}", e))?;
+
+                query("UPDATE User SET Password = ?, PasswordResetToken = NULL, PasswordResetTokenExpires = NULL WHERE ID=?")
+                    .bind(password_hash)
+                    .bind(id)
+                    .execute(pool.as_ref())
+                    .await?;
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
 }
 
 pub async fn update_user(pool: &DatabasePool, user: &UserInfo) -> DatabaseResult<()> {
@@ -208,6 +225,14 @@ pub async fn get_friend_code(pool: &DatabasePool, user_id: UserId) -> DatabaseRe
         let friend_code: Uuid = row.get("FriendCode");
         friend_code.simple().to_string()
     }))
+}
+
+pub async fn clear_expired_password_reset_tokens(pool: &DatabasePool) -> DatabaseResult<()> {
+    query("UPDATE User SET PasswordResetToken = NULL, PasswordResetTokenExpires = NULL WHERE PasswordResetToken IS NOT NULL AND PasswordResetTokenExpires IS NOT NULL AND PasswordResetTokenExpires < CURRENT_TIMESTAMP()")
+        .execute(pool.as_ref())
+        .await?;
+
+    Ok(())
 }
 
 fn user_info(row: MySqlRow, email: Option<String>) -> UserInfo {
