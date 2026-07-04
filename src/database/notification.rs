@@ -25,7 +25,7 @@ pub async fn set_last_notification(pool: &DatabasePool, fronting_user_id: UserId
         .fetch_optional(pool.as_ref())
         .await?;
     if res.is_some() {
-        return Ok(true);
+        return Ok(false);
     }
     query("INSERT INTO LastNotification (FrontingUserId, ReceivingUserId, FrontText) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE FrontText = ?")
         .bind(fronting_user_id)
@@ -34,7 +34,7 @@ pub async fn set_last_notification(pool: &DatabasePool, fronting_user_id: UserId
         .bind(front_text)
         .execute(pool.as_ref())
         .await?;
-    Ok(false)
+    Ok(true)
 }
 
 pub async fn remove_subscription(pool: &DatabasePool, id: i64) -> DatabaseResult<()> {
