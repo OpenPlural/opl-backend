@@ -202,13 +202,14 @@ pub async fn delete_member(pool: &DatabasePool, member_id: MemberId, user_id: Us
 }
 
 pub async fn edit_member(pool: &DatabasePool, member: &Member) -> DatabaseResult<()> {
-    query("UPDATE Member SET Sort = ?, Name = ?, Pronouns = ?, AvatarUrl = ?, Description = ?, Color = ? WHERE ID = ? AND UserId = ?")
+    query("UPDATE Member SET Sort = ?, Name = ?, Pronouns = ?, AvatarUrl = ?, Description = ?, Color = ?, Archived = ? WHERE ID = ? AND UserId = ?")
         .bind(member.sort)
         .bind(&member.name)
         .bind(&member.pronouns)
         .bind(&member.avatar)
         .bind(&member.description)
         .bind(member.color)
+        .bind(member.archived)
         .bind(member.id)
         .bind(member.user_id)
         .execute(pool.as_ref())
