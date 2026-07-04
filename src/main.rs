@@ -34,6 +34,7 @@ use actix_web::middleware::from_fn;
 use tokio::spawn;
 use tokio::time::interval;
 use crate::frontwatch::watch_front_changes;
+use crate::web::admin::make_password_reset_token;
 use crate::web::api::apikey::{create_api_key, delete_api_key, get_api_keys};
 use crate::web::api::fields::{clear_field_value, create_field, create_field_value, delete_field, edit_field, get_field, get_field_privacy, get_field_value, get_field_values, get_fields, get_specific_field_values, reorder_fields, update_field_value};
 use crate::web::api::import::import;
@@ -215,6 +216,10 @@ async fn main() -> std::io::Result<()> {
                     .service(delete_account)
                     .service(change_password)
                     .service(reset_password)
+            )
+            .service(
+                scope("/admin")
+                    .service(make_password_reset_token)
             )
             .service(version)
     }).bind(("0.0.0.0", 11675))?.run().await
