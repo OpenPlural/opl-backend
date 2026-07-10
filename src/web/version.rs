@@ -5,11 +5,13 @@ use std::env::var;
 use std::str::FromStr;
 
 #[get("/app-update")]
-pub async fn app_update() -> HttpResponse {
+pub async fn app_update() -> WebResult {
     if let Ok(ver) = var("APP_VERSION") {
-        HttpResponse::Ok().body(ver)
+        ok(json!({
+            "version": ver,
+        }))
     } else {
-        HttpResponse::NotImplemented().finish()
+        Ok(HttpResponse::NotImplemented().finish())
     }
 }
 
