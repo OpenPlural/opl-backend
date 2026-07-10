@@ -37,6 +37,16 @@ pub async fn set_last_notification(pool: &DatabasePool, fronting_user_id: UserId
     Ok(true)
 }
 
+pub async fn clear_last_notification(pool: &DatabasePool, fronting_user_id: UserId, receiving_user_id: UserId) -> DatabaseResult<()> {
+    query("DELETE FROM LastNotification WHERE FrontingUserId = ? AND ReceivingUserId = ?")
+        .bind(fronting_user_id)
+        .bind(receiving_user_id)
+        .execute(pool.as_ref())
+        .await?;
+
+    Ok(())
+}
+
 pub async fn remove_subscription(pool: &DatabasePool, id: i64) -> DatabaseResult<()> {
     query("DELETE FROM Notification WHERE ID = ?")
         .bind(id)

@@ -62,6 +62,8 @@ pub async fn watch_front_changes(database_pool: DatabasePool) {
                                         };
                                         let _ = crate::notification::notify_user(&database_pool, notify_user, &username, &front_text, tag).await;
                                     }
+                                } else {
+                                    let _ = crate::database::notification::clear_last_notification(&database_pool, user_id, notify_user).await;
                                 }
                             }
                         }
