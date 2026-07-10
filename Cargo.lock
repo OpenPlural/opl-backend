@@ -1983,7 +1983,7 @@ dependencies = [
 
 [[package]]
 name = "opl-backend"
-version = "0.5.8"
+version = "0.5.9"
 dependencies = [
  "actix-web",
  "anyhow",
