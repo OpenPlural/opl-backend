@@ -38,6 +38,8 @@ pub async fn export(req: HttpRequest, data: Data<AppState>) -> WebResult {
         if user_cooldown.contains_key(&token.user_id) {
             return Err(WebError::WaitCooldown("6 hours"));
         }
+
+        user_cooldown.insert(token.user_id, Instant::now());
     }
 
     let privacy = crate::database::privacy::get_privacy_buckets(&data.pool, token.user_id).await.map_err(to_web_error)?;
