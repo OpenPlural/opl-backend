@@ -19,6 +19,8 @@ pub enum WebError {
     CantSetCookie(anyhow::Error),
     #[error("This web push endpoint is not trusted")]
     WebPushEndpointNotTrusted,
+    #[error("You can only do this every {0} seconds")]
+    WaitCooldown(u64),
 
     #[error("Account registration is disabled")]
     RegistrationDisabled,
@@ -64,6 +66,7 @@ impl ResponseError for WebError {
             WebError::InvalidToken => StatusCode::UNAUTHORIZED,
             WebError::CantSetCookie(_) => StatusCode::INTERNAL_SERVER_ERROR,
             WebError::WebPushEndpointNotTrusted => StatusCode::FORBIDDEN,
+            WebError::WaitCooldown(_) => StatusCode::TOO_MANY_REQUESTS,
 
             WebError::RegistrationDisabled => StatusCode::FORBIDDEN,
             WebError::UsernameAlreadyExists => StatusCode::CONFLICT,

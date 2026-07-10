@@ -1,20 +1,21 @@
 use crate::model::fields::{CustomField, CustomFieldDataType};
 use crate::model::privacy::PrivacyBucket;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use crate::model::folder::Folder;
 use crate::model::member::Member;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct Import {
     pub privacy: Option<Vec<ImportPrivacyBucket>>,
     pub fields: Option<Vec<ImportCustomField>>,
     pub folders: Option<Vec<ImportFolder>>,
     pub members: Option<Vec<ImportMember>>,
+    #[serde(skip_serializing)]
     pub truncate: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ImportPrivacyBucket {
     pub id: String,
     #[serde(deserialize_with = "crate::numberstring::deserialize")]
@@ -55,7 +56,7 @@ impl Into<PrivacyBucket> for ImportPrivacyBucket {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ImportCustomField {
     pub id: String,
     #[serde(deserialize_with = "crate::numberstring::deserialize")]
@@ -85,7 +86,7 @@ impl Into<CustomField> for ImportCustomField {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ImportFolder {
     pub id: String,
     #[serde(rename = "parentId")]
@@ -128,7 +129,7 @@ impl Into<Folder> for ImportFolder {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ImportMember {
     pub name: String,
     pub pronouns: Option<String>,
