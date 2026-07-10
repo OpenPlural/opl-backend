@@ -169,12 +169,12 @@ pub async fn add_privacy_bucket_folder<'a, E: DatabaseExecutor<'a>>(executor: E,
     Ok(())
 }
 
-pub async fn remove_privacy_bucket_folder(pool: &DatabasePool, bucket_id: PrivacyBucketId, user_id: UserId, folder_id: FolderId) -> DatabaseResult<()> {
+pub async fn remove_privacy_bucket_folder<'a, E: DatabaseExecutor<'a>>(executor: E, bucket_id: PrivacyBucketId, user_id: UserId, folder_id: FolderId) -> DatabaseResult<()> {
     query("DELETE FROM PrivacyBucketFolder WHERE UserId = ? AND BucketId = ? AND FolderId = ?")
         .bind(user_id)
         .bind(bucket_id)
         .bind(folder_id)
-        .execute(pool.as_ref())
+        .execute(executor)
         .await?;
 
     Ok(())
@@ -188,6 +188,31 @@ pub async fn get_folder_privacy_buckets(pool: &DatabasePool, folder_id: FolderId
         .await?;
 
     Ok(res.into_iter().map(simple_bucket).collect())
+}
+
+pub async fn set_folder_privacy(pool: &DatabasePool, folder_id: FolderId, user_id: UserId, ids: Vec<PrivacyBucketId>) -> DatabaseResult<()> {
+    let mut tx = pool.begin().await?;
+    let res = query("SELECT BucketId FROM PrivacyBucketFolder WHERE FolderId = ? AND UserId = ?")
+        .bind(folder_id)
+        .bind(user_id)
+        .fetch_all(&mut *tx)
+        .await?;
+    let res: Vec<PrivacyBucketId> = res.into_iter().map(|row| row.get(0)).collect();
+
+    for id in &ids {
+        if !res.contains(id) {
+            add_privacy_bucket_folder(&mut *tx, *id, user_id, folder_id).await?;
+        }
+    }
+
+    for id in res {
+        if !ids.contains(&id) {
+            remove_privacy_bucket_folder(&mut *tx, id, user_id, folder_id).await?;
+        }
+    }
+
+    tx.commit().await?;
+    Ok(())
 }
 
 pub async fn add_privacy_bucket_member<'a, E: DatabaseExecutor<'a>>(executor: E, bucket_id: PrivacyBucketId, user_id: UserId, member_id: MemberId) -> DatabaseResult<()> {
