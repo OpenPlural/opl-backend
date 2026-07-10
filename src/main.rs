@@ -21,7 +21,7 @@ use crate::web::api::session::{get_sessions, invalidate_current_session, invalid
 use crate::web::api::sync::sync;
 use crate::web::api::user::{change_friend_code, edit_user, get_self_user, get_user, get_username};
 use crate::web::auth::{change_password, delete_account, login, register, reset_password};
-use crate::web::version::version;
+use crate::web::version::{app_update, version};
 use actix_web::dev::Service;
 use actix_web::web::{scope, Data};
 use actix_web::{App, HttpServer};
@@ -223,5 +223,6 @@ async fn main() -> std::io::Result<()> {
                     .service(make_password_reset_token)
             )
             .service(version)
+            .service(app_update)
     }).bind(("0.0.0.0", 11675))?.run().await
 }

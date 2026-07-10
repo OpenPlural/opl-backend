@@ -20,6 +20,7 @@ jobs:
       WEB_PUSH_VAPID_SUB:
       WEB_PUSH_TRUSTED_ENDPOINTS:
       ADMIN_SECRET_TOKEN_SHA:
+      APP_VERSION:
     steps:
     - uses: actions/checkout@v4
     - name: Override with nightly toolchain

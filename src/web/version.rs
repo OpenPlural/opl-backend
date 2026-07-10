@@ -1,7 +1,17 @@
-use std::str::FromStr;
-use actix_web::get;
-use serde_json::json;
 use crate::web::{ok, WebResult};
+use actix_web::{get, HttpResponse};
+use serde_json::json;
+use std::env::var;
+use std::str::FromStr;
+
+#[get("/app-update")]
+pub async fn app_update() -> HttpResponse {
+    if let Ok(ver) = var("APP_VERSION") {
+        HttpResponse::Ok().body(ver)
+    } else {
+        HttpResponse::NotImplemented().finish()
+    }
+}
 
 #[get("/version")]
 pub async fn version() -> WebResult {
