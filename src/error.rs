@@ -19,8 +19,8 @@ pub enum WebError {
     CantSetCookie(anyhow::Error),
     #[error("This web push endpoint is not trusted")]
     WebPushEndpointNotTrusted,
-    #[error("You can only do this every {0} seconds")]
-    WaitCooldown(u64),
+    #[error("You can only do this every {0}")]
+    WaitCooldown(&'static str),
 
     #[error("Account registration is disabled")]
     RegistrationDisabled,
