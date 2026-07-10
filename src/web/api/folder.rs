@@ -6,8 +6,9 @@ use crate::model::user::UserFilter;
 use crate::web::{not_found, ok, ok_none, validation_error, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Json, Path, Query};
-use actix_web::{delete, get, patch, put, HttpRequest};
+use actix_web::{delete, get, patch, post, put, HttpRequest};
 use crate::model::IdResponse;
+use crate::model::privacy::PrivacyBucketId;
 
 #[get("/")]
 pub async fn get_folders(req: HttpRequest, data: Data<AppState>, query: Query<UserFilter>) -> WebResult {
@@ -91,4 +92,16 @@ pub async fn get_folder_privacy(req: HttpRequest, data: Data<AppState>, path: Pa
 
     let buckets = crate::database::privacy::get_folder_privacy_buckets(&data.pool, folder_id, token.user_id).await.map_err(to_web_error)?;
     ok(buckets)
+}
+
+#[post("/{id}/privacy")]
+pub async fn set_folder_privacy(req: HttpRequest, data: Data<AppState>, path: Path<FolderId>, body: Json<Vec<PrivacyBucketId>>) -> WebResult {
+    let token = get_token(&req).unwrap();
+    token.require_write()?;
+
+    let folder_id = path.into_inner();
+
+    let body = body.into_inner();
+    crate::database::privacy::set_folder_privacy(&data.pool, folder_id, token.user_id, body).await.map_err(to_web_error)?;
+    ok_none()
 }
