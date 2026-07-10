@@ -16,8 +16,7 @@ use tokio::time::Instant;
 use crate::error::WebError;
 use crate::model::user::UserId;
 
-const COOLDOWN_DURATION_SECONDS: u64 = 900;
-const COOLDOWN_DURATION: Duration = Duration::from_secs(COOLDOWN_DURATION_SECONDS);
+const COOLDOWN_DURATION: Duration = Duration::from_hours(6);
 static USER_COOLDOWN: OnceCell<Arc<Mutex<HashMap<UserId, Instant>>>> = OnceCell::const_new();
 
 async fn get_user_cooldowns() -> &'static Arc<Mutex<HashMap<UserId, Instant>>> {
@@ -37,7 +36,7 @@ pub async fn export(req: HttpRequest, data: Data<AppState>) -> WebResult {
         user_cooldown.retain(|_, v| v.elapsed() <= COOLDOWN_DURATION);
 
         if user_cooldown.contains_key(&token.user_id) {
-            return Err(WebError::WaitCooldown(COOLDOWN_DURATION_SECONDS));
+            return Err(WebError::WaitCooldown("6 hours"));
         }
     }
 
