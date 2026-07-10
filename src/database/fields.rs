@@ -105,6 +105,15 @@ pub async fn get_field_value_ids(pool: &DatabasePool, user_id: UserId) -> Databa
     Ok(ids.into_iter().map(|row| row.get(0)).collect())
 }
 
+pub async fn get_field_values(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<CustomFieldDataValue>> {
+    let updated = query("SELECT ID, UserId, FieldId, MemberId, DataValue, UpdatedAt FROM CustomFieldData WHERE UserId = ?")
+        .bind(user_id)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+    Ok(updated.into_iter().map(field_value).collect())
+}
+
 pub async fn get_updated_field_values(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<CustomFieldDataValue>> {
     let updated = query("SELECT ID, UserId, FieldId, MemberId, DataValue, UpdatedAt FROM CustomFieldData WHERE UserId = ? AND UpdatedAt > ?")
         .bind(user_id)

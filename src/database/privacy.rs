@@ -190,6 +190,15 @@ pub async fn get_folder_privacy_buckets(pool: &DatabasePool, folder_id: FolderId
     Ok(res.into_iter().map(simple_bucket).collect())
 }
 
+pub async fn get_folder_privacy_entries(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<(FolderId, PrivacyBucketId)>> {
+    let res = query("SELECT FolderId, BucketId FROM PrivacyBucketFolder WHERE UserId = ?")
+        .bind(user_id)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+    Ok(res.into_iter().map(|row| (row.get(0), row.get(1))).collect())
+}
+
 pub async fn set_folder_privacy(pool: &DatabasePool, folder_id: FolderId, user_id: UserId, ids: Vec<PrivacyBucketId>) -> DatabaseResult<()> {
     let mut tx = pool.begin().await?;
     let res = query("SELECT BucketId FROM PrivacyBucketFolder WHERE FolderId = ? AND UserId = ?")
@@ -247,6 +256,15 @@ pub async fn get_member_privacy_buckets(pool: &DatabasePool, member_id: MemberId
     Ok(res.into_iter().map(simple_bucket).collect())
 }
 
+pub async fn get_member_privacy_entries(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<(MemberId, PrivacyBucketId)>> {
+    let res = query("SELECT MemberId, BucketId FROM PrivacyBucketMember WHERE UserId = ?")
+        .bind(user_id)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+    Ok(res.into_iter().map(|row| (row.get(0), row.get(1))).collect())
+}
+
 pub async fn add_privacy_bucket_custom_field<'a, E: DatabaseExecutor<'a>>(executor: E, bucket_id: PrivacyBucketId, user_id: UserId, field_id: CustomFieldId) -> DatabaseResult<()> {
     query("INSERT INTO PrivacyBucketCustomField (UserId, BucketId, FieldId) VALUES (?, ?, ?)")
         .bind(user_id)
@@ -277,6 +295,15 @@ pub async fn get_custom_field_privacy_buckets(pool: &DatabasePool, field_id: Cus
         .await?;
 
     Ok(res.into_iter().map(simple_bucket).collect())
+}
+
+pub async fn get_custom_field_privacy_entries(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<(CustomFieldId, PrivacyBucketId)>> {
+    let res = query("SELECT FieldId, BucketId FROM PrivacyBucketCustomField WHERE UserId = ?")
+        .bind(user_id)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+    Ok(res.into_iter().map(|row| (row.get(0), row.get(1))).collect())
 }
 
 pub async fn add_privacy_bucket_friend(pool: &DatabasePool, bucket_id: PrivacyBucketId, user_id: UserId, friend_id: UserId) -> DatabaseResult<()> {
