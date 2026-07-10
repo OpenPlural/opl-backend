@@ -41,6 +41,7 @@ pub struct ViewedMember {
     pub description: Option<String>,
     pub color: u32,
     pub archived: bool,
+    pub custom: bool,
     pub folders: Vec<FolderId>,
 }
 
@@ -55,6 +56,7 @@ impl From<Member> for ViewedMember {
             description: member.description,
             color: member.color,
             archived: member.archived,
+            custom: member.custom,
             folders: member.folders,
         }
     }
