@@ -90,16 +90,13 @@ pub async fn add_privacy_bucket_folder(req: HttpRequest, data: Data<AppState>, p
     token.require_write()?;
 
     let (bucket_id, folder_id) = path.into_inner();
-    if let Some(bucket_owner) = crate::database::privacy::get_privacy_bucket_owner(&data.pool, bucket_id).await.map_err(to_web_error)? {
-        if bucket_owner != token.user_id {
-            return Err(WebError::ResourceNotOwned);
-        }
+    if let Some(bucket) = crate::database::privacy::get_simple_privacy_bucket(&data.pool, bucket_id, token.user_id).await.map_err(to_web_error)? {
         if let Some(folder_owner) = crate::database::folder::get_folder_owner(&data.pool, folder_id).await.map_err(to_web_error)? {
             if folder_owner != token.user_id {
                 return Err(WebError::ResourceNotOwned);
             }
             crate::database::privacy::add_privacy_bucket_folder(&*data.pool, bucket_id, token.user_id, folder_id).await.map_err(to_web_error)?;
-            return ok_none();
+            return ok(bucket);
         }
     }
     not_found()
@@ -111,16 +108,13 @@ pub async fn add_privacy_bucket_member(req: HttpRequest, data: Data<AppState>, p
     token.require_write()?;
 
     let (bucket_id, member_id) = path.into_inner();
-    if let Some(bucket_owner) = crate::database::privacy::get_privacy_bucket_owner(&data.pool, bucket_id).await.map_err(to_web_error)? {
-        if bucket_owner != token.user_id {
-            return Err(WebError::ResourceNotOwned);
-        }
+    if let Some(bucket) = crate::database::privacy::get_simple_privacy_bucket(&data.pool, bucket_id, token.user_id).await.map_err(to_web_error)? {
         if let Some(member_owner) = crate::database::member::get_member_owner(&data.pool, member_id).await.map_err(to_web_error)? {
             if member_owner != token.user_id {
                 return Err(WebError::ResourceNotOwned);
             }
             crate::database::privacy::add_privacy_bucket_member(&*data.pool, bucket_id, token.user_id, member_id).await.map_err(to_web_error)?;
-            return ok_none();
+            return ok(bucket);
         }
     }
     not_found()
@@ -132,16 +126,13 @@ pub async fn add_privacy_bucket_custom_field(req: HttpRequest, data: Data<AppSta
     token.require_write()?;
 
     let (bucket_id, field_id) = path.into_inner();
-    if let Some(bucket_owner) = crate::database::privacy::get_privacy_bucket_owner(&data.pool, bucket_id).await.map_err(to_web_error)? {
-        if bucket_owner != token.user_id {
-            return Err(WebError::ResourceNotOwned);
-        }
+    if let Some(bucket) = crate::database::privacy::get_simple_privacy_bucket(&data.pool, bucket_id, token.user_id).await.map_err(to_web_error)? {
         if let Some(field_owner) = crate::database::fields::get_field_owner(&data.pool, field_id).await.map_err(to_web_error)? {
             if field_owner != token.user_id {
                 return Err(WebError::ResourceNotOwned);
             }
             crate::database::privacy::add_privacy_bucket_custom_field(&*data.pool, bucket_id, token.user_id, field_id).await.map_err(to_web_error)?;
-            return ok_none();
+            return ok(bucket);
         }
     }
     not_found()
@@ -156,12 +147,9 @@ pub async fn add_privacy_bucket_friend(req: HttpRequest, data: Data<AppState>, p
     if !crate::database::friend::check_friendship(&data.pool, token.user_id, friend_id).await.map_err(to_web_error)? {
         return Err(WebError::NotFriends);
     }
-    if let Some(bucket_owner) = crate::database::privacy::get_privacy_bucket_owner(&data.pool, bucket_id).await.map_err(to_web_error)? {
-        if bucket_owner != token.user_id {
-            return Err(WebError::ResourceNotOwned);
-        }
+    if let Some(bucket) = crate::database::privacy::get_simple_privacy_bucket(&data.pool, bucket_id, token.user_id).await.map_err(to_web_error)? {
         crate::database::privacy::add_privacy_bucket_friend(&data.pool, bucket_id, token.user_id, friend_id).await.map_err(to_web_error)?;
-        return ok_none();
+        return ok(bucket);
     }
     not_found()
 }

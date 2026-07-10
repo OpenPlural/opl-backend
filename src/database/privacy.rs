@@ -94,6 +94,16 @@ pub async fn get_privacy_bucket(pool: &DatabasePool, bucket_id: PrivacyBucketId,
     Ok(Some(bucket(res.unwrap(), folders, members, friends)))
 }
 
+pub async fn get_simple_privacy_bucket(pool: &DatabasePool, bucket_id: PrivacyBucketId, user_id: UserId) -> DatabaseResult<Option<SimplePrivacyBucket>> {
+    let res = query("SELECT ID, Sort, Name, Emoji, Color FROM PrivacyBucket WHERE ID = ? AND UserId = ?")
+        .bind(bucket_id)
+        .bind(user_id)
+        .fetch_optional(pool.as_ref())
+        .await?;
+
+    Ok(res.map(simple_bucket))
+}
+
 pub async fn create_privacy_bucket<'a, E: DatabaseExecutor<'a>>(executor: E, bucket: &PrivacyBucket) -> DatabaseResult<PrivacyBucketId> {
     let id = query("INSERT INTO PrivacyBucket (UserId, Sort, Name, Description, Emoji) VALUES (?, ?, ?, ?, ?) RETURNING ID")
         .bind(bucket.user_id)
@@ -274,15 +284,6 @@ pub async fn get_friend_privacy_buckets(pool: &DatabasePool, friend_id: UserId, 
         .await?;
 
     Ok(res.into_iter().map(simple_bucket).collect())
-}
-
-pub async fn get_privacy_bucket_owner(pool: &DatabasePool, bucket_id: PrivacyBucketId) -> DatabaseResult<Option<UserId>> {
-    let owner = query("SELECT UserId FROM PrivacyBucket WHERE ID = ?")
-        .bind(bucket_id)
-        .fetch_optional(pool.as_ref())
-        .await?;
-
-    Ok(owner.map(|row| row.get("UserId")))
 }
 
 fn bucket(row: MySqlRow, folders: Vec<MySqlRow>, members: Vec<MySqlRow>, friends: Vec<MySqlRow>) -> PrivacyBucket {
