@@ -15,7 +15,7 @@ pub async fn get_friend_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseRes
 }
 
 pub async fn get_notified_friend_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<(UserId, bool)>> {
-    let friends = query("SELECT f.FriendId, s.NotifyWithTag FROM Friend f JOIN Friend s ON s.UserId = f.UserId WHERE f.UserId = ? AND f.PermissionLevel >= ? AND s.NotifyMe")
+    let friends = query("SELECT s.UserId, s.NotifyWithTag FROM Friend f JOIN Friend s ON s.UserId = f.FriendId AND s.FriendId = f.UserId WHERE f.UserId = ? AND f.PermissionLevel >= ? AND s.NotifyMe")
         .bind(user_id)
         .bind(PERMISSION_LEVEL_NOTIFICATIONS)
         .fetch_all(pool.as_ref())
