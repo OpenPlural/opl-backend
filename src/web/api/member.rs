@@ -34,21 +34,23 @@ pub async fn get_member(req: HttpRequest, data: Data<AppState>, path: Path<Membe
 
     if let Some(member) = crate::database::member::get_member_by_id(&data.pool, member_id, user_id, token.as_friend_viewer(user_id)).await.map_err(to_web_error)? {
         if member.custom && token.user_id != user_id {
-            return not_found();
+            if !crate::database::front::is_fronting(&data.pool, user_id, member.id).await.map_err(to_web_error)? {
+                return not_found();
+            }
         }
         if query.extended {
-            let folders = crate::database::folder::get_folders_by_ids(&data.pool, &member.folders, user_id).await.map_err(to_web_error)?;
-            let folders = folders.into_iter().map(Into::into).collect();
+            let folders = if member.custom {
+                vec![]
+            } else {
+                let folders = crate::database::folder::get_folders_by_ids(&data.pool, &member.folders, user_id).await.map_err(to_web_error)?;
+                folders.into_iter().map(Into::into).collect()
+            };
             ok(ExtendedViewedMember {
                 member: member.into(),
                 folders,
             })
         } else if token.user_id != user_id {
-            if member.custom {
-                not_found()
-            } else {
-                ok(ViewedMember::from(member))
-            }
+            ok(ViewedMember::from(member))
         } else {
             ok(member)
         }
