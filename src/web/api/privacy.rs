@@ -160,7 +160,7 @@ pub async fn remove_privacy_bucket_folder(req: HttpRequest, data: Data<AppState>
     token.require_write()?;
 
     let (bucket_id, folder_id) = path.into_inner();
-    crate::database::privacy::remove_privacy_bucket_folder(&data.pool, bucket_id, token.user_id, folder_id).await.map_err(to_web_error)?;
+    crate::database::privacy::remove_privacy_bucket_folder(&*data.pool, bucket_id, token.user_id, folder_id).await.map_err(to_web_error)?;
     ok_none()
 }
 
