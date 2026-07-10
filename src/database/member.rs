@@ -67,7 +67,7 @@ WHERE UserId = ? AND EXISTS (
             .fetch_all(pool.as_ref())
             .await?
     } else {
-        query("SELECT UserId, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom, ID FROM Member WHERE UserId = ?")
+        query("SELECT UserId, Sort, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom, ID FROM Member WHERE UserId = ?")
             .bind(user_id)
             .fetch_all(pool.as_ref())
             .await?
