@@ -17,6 +17,7 @@ pub async fn check_session(pool: &DatabasePool, token: &str) -> DatabaseResult<O
             session_id: Some(session_id),
             user_id,
             write: true,
+            virtual_session: false,
         }))
     } else {
         Ok(None)

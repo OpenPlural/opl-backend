@@ -3,6 +3,7 @@ use crate::model::auth::AccountInfo;
 use crate::model::user::{UserId, UserInfo};
 use crate::security::{hash, random_string, sha256, verify, SESSION_TOKEN_LENGTH};
 use anyhow::anyhow;
+use chrono::{DateTime, Utc};
 use sqlx::mysql::{MySqlArguments, MySqlRow};
 use sqlx::{query, Arguments, Executor, Row, Statement};
 use uuid::Uuid;
@@ -64,7 +65,7 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
             let email = user.get("Email");
             let user = user_info(user, email);
             return Ok((AccountInfo {
-                session: token_id,
+                session: Some(token_id),
                 created_at,
                 friend_code,
                 user,
@@ -93,7 +94,7 @@ pub async fn delete(pool: &DatabasePool, id: UserId, password: &str) -> Database
     Ok(false)
 }
 
-pub async fn change_password(pool: &DatabasePool, id: UserId, old_password: &str, new_password: &str) -> DatabaseResult<bool> {
+pub async fn verify_and_change_password(pool: &DatabasePool, id: UserId, old_password: &str, new_password: &str) -> DatabaseResult<bool> {
     let user = query("SELECT Password FROM User WHERE ID=?")
         .bind(id)
         .fetch_optional(pool.as_ref())
@@ -102,17 +103,23 @@ pub async fn change_password(pool: &DatabasePool, id: UserId, old_password: &str
     if let Some(user) = user {
         let password_hash: String = user.get("Password");
         if verify(&password_hash, old_password).await.is_ok() {
-            let password_hash = hash(new_password).await.map_err(|e| anyhow!("{:?}", e))?;
-
-            query("UPDATE User SET Password = ? WHERE ID=?")
-                .bind(password_hash)
-                .bind(id)
-                .execute(pool.as_ref())
-                .await?;
+            change_password(pool, id, new_password).await?;
             return Ok(true);
         }
     }
     Ok(false)
+}
+
+pub async fn change_password(pool: &DatabasePool, id: UserId, new_password: &str) -> DatabaseResult<()> {
+    let password_hash = hash(new_password).await.map_err(|e| anyhow!("{:?}", e))?;
+
+    query("UPDATE User SET Password = ? WHERE ID=?")
+        .bind(password_hash)
+        .bind(id)
+        .execute(pool.as_ref())
+        .await?;
+
+    Ok(())
 }
 
 pub async fn reset_password(pool: &DatabasePool, name: &str, reset_token: &str, new_password: &str) -> DatabaseResult<bool> {
@@ -139,6 +146,37 @@ pub async fn reset_password(pool: &DatabasePool, name: &str, reset_token: &str, 
         }
     }
     Ok(false)
+}
+
+pub async fn is_disabled(pool: &DatabasePool, id: UserId) -> DatabaseResult<Option<bool>> {
+    let user = query("SELECT AccountDisabled FROM User WHERE ID=?")
+        .bind(id)
+        .fetch_optional(pool.as_ref())
+        .await?;
+
+    Ok(user.map(|row| row.get("AccountDisabled")))
+}
+
+pub async fn set_disabled(pool: &DatabasePool, id: UserId, disabled: bool) -> DatabaseResult<()> {
+    query("UPDATE User SET AccountDisabled = ? WHERE ID=?")
+        .bind(disabled)
+        .bind(id)
+        .execute(pool.as_ref())
+        .await?;
+
+    Ok(())
+}
+
+pub async fn can_reset_password(pool: &DatabasePool, id: UserId) -> DatabaseResult<Option<bool>> {
+    let user = query("SELECT PasswordResetToken FROM User WHERE ID=?")
+        .bind(id)
+        .fetch_optional(pool.as_ref())
+        .await?;
+
+    Ok(user.map(|row| {
+        let token: Option<String> = row.get("PasswordResetToken");
+        token.is_some()
+    }))
 }
 
 pub async fn update_user(pool: &DatabasePool, user: &UserInfo) -> DatabaseResult<()> {
@@ -181,6 +219,19 @@ pub async fn get_user_by_id(pool: &DatabasePool, user_id: UserId, with_email: bo
         };
         let user = user_info(user, email);
         Ok(Some((user, friend_code)))
+    } else {
+        Ok(None)
+    }
+}
+
+pub async fn get_user_creation_date(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Option<DateTime<Utc>>> {
+    let date = query("SELECT CreatedAt FROM User WHERE ID=?")
+        .bind(user_id)
+        .fetch_optional(pool.as_ref())
+        .await?;
+
+    if let Some(date) = date {
+        Ok(Some(date.get("CreatedAt")))
     } else {
         Ok(None)
     }

@@ -17,7 +17,7 @@ use crate::web::api::folder::{create_folder, delete_folder, edit_folder, get_fol
 use crate::web::api::friend::{accept_friend_request, cancel_friend_request, decline_friend_request, get_friend_privacy, get_friends, get_incoming_friend_requests, get_outgoing_friend_requests, get_settings, send_friend_request, unfriend, update_settings};
 use crate::web::api::front::{add_front_entry, delete_front_entry, edit_front_entry, get_front_entries, get_front_entry, get_front_history};
 use crate::web::api::member::{create_member, delete_member, edit_member, edit_member_folders, get_member, get_member_field_values, get_member_fields, get_member_front_entry, get_member_front_history, get_member_privacy, get_members};
-use crate::web::api::session::{get_sessions, invalidate_current_session, invalidate_session};
+use crate::web::api::session::{get_sessions, initialize_virtual_session, invalidate_current_session, invalidate_session};
 use crate::web::api::sync::sync;
 use crate::web::api::user::{change_friend_code, edit_user, get_self_user, get_user, get_username};
 use crate::web::auth::{change_password, delete_account, login, register, reset_password};
@@ -34,7 +34,10 @@ use actix_web::middleware::from_fn;
 use tokio::spawn;
 use tokio::time::interval;
 use crate::frontwatch::watch_front_changes;
-use crate::web::admin::make_password_reset_token;
+use crate::web::admin::password::{force_change_password, make_password_reset_token, revoke_password_reset_token};
+use crate::web::admin::regenerate_admin_token;
+use crate::web::admin::stats::get_statistics;
+use crate::web::admin::user::{disable_user, enable_user, export_user, get_all_users, get_user_by_id};
 use crate::web::api::apikey::{create_api_key, delete_api_key, get_api_keys};
 use crate::web::api::export::export;
 use crate::web::api::fields::{clear_field_value, create_field, create_field_value, delete_field, edit_field, get_field, get_field_privacy, get_field_value, get_field_values, get_fields, get_specific_field_values, reorder_fields, update_field_value};
@@ -201,6 +204,7 @@ async fn main() -> std::io::Result<()> {
                             .service(get_sessions)
                             .service(invalidate_current_session)
                             .service(invalidate_session)
+                            .service(initialize_virtual_session)
                     )
                     .service(
                         scope("/sync")
@@ -225,7 +229,25 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 scope("/admin")
-                    .service(make_password_reset_token)
+                    .service(regenerate_admin_token)
+                    .service(
+                        scope("/password")
+                            .service(make_password_reset_token)
+                            .service(revoke_password_reset_token)
+                            .service(force_change_password)
+                    )
+                    .service(
+                        scope("/statistics")
+                            .service(get_statistics)
+                    )
+                    .service(
+                        scope("/user")
+                            .service(get_all_users)
+                            .service(get_user_by_id)
+                            .service(disable_user)
+                            .service(enable_user)
+                            .service(export_user)
+                    )
             )
             .service(version)
             .service(app_update)

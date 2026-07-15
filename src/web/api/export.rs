@@ -42,7 +42,11 @@ pub async fn export(req: HttpRequest, data: Data<AppState>) -> WebResult {
         user_cooldown.insert(token.user_id, Instant::now());
     }
 
-    let privacy = crate::database::privacy::get_privacy_buckets(&data.pool, token.user_id).await.map_err(to_web_error)?;
+    do_export(data, token.user_id).await
+}
+
+pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
+    let privacy = crate::database::privacy::get_privacy_buckets(&data.pool, user_id).await.map_err(to_web_error)?;
     let privacy = privacy.into_iter().map(|pb| ImportPrivacyBucket {
         id: pb.id.to_string(),
         sort: pb.sort,
@@ -52,9 +56,9 @@ pub async fn export(req: HttpRequest, data: Data<AppState>) -> WebResult {
         color: pb.color,
     }).collect();
 
-    let folder_privacy = crate::database::privacy::get_folder_privacy_entries(&data.pool, token.user_id).await.map_err(to_web_error)?;
+    let folder_privacy = crate::database::privacy::get_folder_privacy_entries(&data.pool, user_id).await.map_err(to_web_error)?;
     let mut folder_privacy: HashMap<FolderId, Vec<String>> = list_to_map(folder_privacy);
-    let folders = crate::database::folder::get_folders(&data.pool, token.user_id, None).await.map_err(to_web_error)?;
+    let folders = crate::database::folder::get_folders(&data.pool, user_id, None).await.map_err(to_web_error)?;
     let folders = folders.into_iter().map(|f| ImportFolder {
         id: f.id.to_string(),
         parent_id: f.parent_id.map(|id| id.to_string()),
@@ -66,9 +70,9 @@ pub async fn export(req: HttpRequest, data: Data<AppState>) -> WebResult {
         privacy: folder_privacy.remove(&f.id).unwrap_or_default(),
     }).collect();
 
-    let custom_field_privacy = crate::database::privacy::get_custom_field_privacy_entries(&data.pool, token.user_id).await.map_err(to_web_error)?;
+    let custom_field_privacy = crate::database::privacy::get_custom_field_privacy_entries(&data.pool, user_id).await.map_err(to_web_error)?;
     let mut custom_field_privacy = list_to_map(custom_field_privacy);
-    let custom_fields = crate::database::fields::get_fields(&data.pool, token.user_id).await.map_err(to_web_error)?;
+    let custom_fields = crate::database::fields::get_fields(&data.pool, user_id).await.map_err(to_web_error)?;
     let custom_fields = custom_fields.into_iter().map(|f| ImportCustomField {
         id: f.id.to_string(),
         sort: f.sort,
@@ -77,7 +81,7 @@ pub async fn export(req: HttpRequest, data: Data<AppState>) -> WebResult {
         privacy: custom_field_privacy.remove(&f.id).unwrap_or_default(),
     }).collect();
 
-    let custom_field_data = crate::database::fields::get_field_values(&data.pool, token.user_id).await.map_err(to_web_error)?;
+    let custom_field_data = crate::database::fields::get_field_values(&data.pool, user_id).await.map_err(to_web_error)?;
     let mut custom_field_data: HashMap<MemberId, HashMap<String, String>> = custom_field_data.into_iter().fold(HashMap::new(), |mut map, field| {
         if let Some(map) = map.get_mut(&field.member_id) {
             map.insert(field.field_id.to_string(), field.value);
@@ -89,9 +93,9 @@ pub async fn export(req: HttpRequest, data: Data<AppState>) -> WebResult {
         map
     });
 
-    let member_privacy = crate::database::privacy::get_member_privacy_entries(&data.pool, token.user_id).await.map_err(to_web_error)?;
+    let member_privacy = crate::database::privacy::get_member_privacy_entries(&data.pool, user_id).await.map_err(to_web_error)?;
     let mut member_privacy = list_to_map(member_privacy);
-    let members = crate::database::member::get_members(&data.pool, token.user_id, None).await.map_err(to_web_error)?;
+    let members = crate::database::member::get_members(&data.pool, user_id, None).await.map_err(to_web_error)?;
     let members = members.into_iter().map(|m| ImportMember {
         name: m.id.to_string(),
         pronouns: m.pronouns,

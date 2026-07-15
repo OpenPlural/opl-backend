@@ -54,7 +54,7 @@ pub async fn change_password(req: Json<ChangePasswordRequest>, data: Data<AppSta
     let req = req.into_inner();
     req.validate().map_err(validation_error)?;
 
-    if crate::database::user::change_password(&data.pool, req.id, &req.old_password, &req.new_password).await.map_err(to_web_error)? {
+    if crate::database::user::verify_and_change_password(&data.pool, req.id, &req.old_password, &req.new_password).await.map_err(to_web_error)? {
         ok_none()
     } else {
         Err(WebError::InvalidCredentials)

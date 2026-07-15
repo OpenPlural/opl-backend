@@ -9,7 +9,7 @@ use actix_web::{post, HttpRequest};
 #[post("/subscribe")]
 pub async fn subscribe(req: HttpRequest, data: Data<AppState>, body: Json<PushSubscription>) -> WebResult {
     let token = get_token(&req).unwrap();
-    token.require_session()?;
+    token.require_real_session()?;
 
     let subscription = body.into_inner();
     crate::notification::check_endpoint(&subscription.endpoint).await?;

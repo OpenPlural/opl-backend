@@ -11,7 +11,7 @@ use actix_web::cookie::{Cookie, CookieBuilder, SameSite};
 use actix_web::middleware::Next;
 use crate::database::apikey::check_api_key;
 use crate::model::session::SessionId;
-use crate::security::sha256;
+use crate::security::{sha256, sha512};
 
 pub const SESSION_COOKIE_NAME: &'static str = "Session";
 #[cfg(debug_assertions)]
@@ -23,11 +23,15 @@ pub const SESSION_COOKIE_SAME_SITE_POLICY: SameSite = SameSite::None;
 #[cfg(not(debug_assertions))]
 pub const SESSION_COOKIE_SAME_SITE_POLICY: SameSite = SameSite::Lax;
 
+const ADMIN_SECRET_TOKEN_SHA: &'static str = env!("ADMIN_SECRET_TOKEN_SHA");
+const ADMIN_SECRET_TOKEN_LENGTH: usize = 16384;
+
 #[derive(Debug, Clone)]
 pub struct RequestToken {
     pub session_id: Option<SessionId>,
     pub user_id: UserId,
     pub write: bool,
+    pub virtual_session: bool,
 }
 
 impl RequestToken {
@@ -40,6 +44,14 @@ impl RequestToken {
     }
 
     pub fn require_session(&self) -> Result<(), WebError> {
+        if self.session_id.is_some() || self.virtual_session {
+            Ok(())
+        } else {
+            Err(WebError::TokenPermissionDeniedAdmin)
+        }
+    }
+
+    pub fn require_real_session(&self) -> Result<(), WebError> {
         if self.session_id.is_some() {
             Ok(())
         } else {
@@ -92,8 +104,22 @@ async fn try_authenticate(req: &ServiceRequest) -> Result<(), Error> {
         check_session(&data.pool, &hashed_token).await
     } else if let Some(authorization) = req.headers().get("Authorization") && let Some(token) =
             authorization.to_str().ok().map(|token| token.strip_prefix("Bearer ")).flatten() {
-        let hashed_token = sha256(token);
-        check_api_key(&data.pool, &hashed_token).await
+        if let Some((token, id)) = token.split_once(':') {
+            let hash = sha512(token);
+            if token.len() == ADMIN_SECRET_TOKEN_LENGTH && hash == ADMIN_SECRET_TOKEN_SHA && let Ok(user_id) = id.parse::<UserId>() {
+                Ok(Some(RequestToken {
+                    session_id: None,
+                    user_id,
+                    write: true,
+                    virtual_session: true,
+                }))
+            } else {
+                Ok(None)
+            }
+        } else {
+            let hashed_token = sha256(token);
+            check_api_key(&data.pool, &hashed_token).await
+        }
     } else {
         Ok(None)
     };

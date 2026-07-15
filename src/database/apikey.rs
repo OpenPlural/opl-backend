@@ -17,6 +17,7 @@ pub async fn check_api_key(pool: &DatabasePool, api_key: &str) -> DatabaseResult
             session_id: None,
             user_id,
             write,
+            virtual_session: false,
         }))
     } else {
         Ok(None)
