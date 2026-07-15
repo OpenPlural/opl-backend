@@ -31,20 +31,20 @@ pub async fn watch_front_changes(database_pool: DatabasePool) {
         loop {
             interval.tick().await;
 
-            let mut notify_users = vec![];
+            let mut updated_users = vec![];
             {
                 let mut front_updates = front_updates.lock().await;
                 for (user_id, update_time) in front_updates.iter() {
                     if update_time.elapsed() >= NOTIFY_AFTER_DELAY {
-                        notify_users.push(*user_id);
+                        updated_users.push(*user_id);
                     }
                 }
-                for user_id in &notify_users {
+                for user_id in &updated_users {
                     front_updates.remove(user_id);
                 }
             }
 
-            for user_id in notify_users {
+            for user_id in updated_users {
                 if let Ok(Some(username)) = crate::database::user::get_username(&database_pool, user_id).await {
                     if let Ok(notified_friends) = crate::database::friend::get_notified_friend_ids(&database_pool, user_id).await {
                         if let Ok(front_text) = crate::database::front::get_notification_front_text(&database_pool, notified_friends, user_id).await {
@@ -56,11 +56,11 @@ pub async fn watch_front_changes(database_pool: DatabasePool) {
                                     }
                                     if let Ok(true) = crate::database::notification::set_last_notification(&database_pool, user_id, notify_user, &front_text).await {
                                         let tag = if notify_with_tag {
-                                            Some(format!("front-{notify_user}"))
+                                            Some(format!("front-{user_id}"))
                                         } else {
                                             None
                                         };
-                                        let kind = format!("front/{notify_user}");
+                                        let kind = format!("front/{user_id}");
                                         let _ = crate::notification::notify_user(&database_pool, notify_user, &username, &front_text, &kind, tag).await;
                                     }
                                 } else {
