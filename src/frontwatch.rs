@@ -56,11 +56,11 @@ pub async fn watch_front_changes(database_pool: DatabasePool) {
                                     }
                                     if let Ok(true) = crate::database::notification::set_last_notification(&database_pool, user_id, notify_user, &front_text).await {
                                         let tag = if notify_with_tag {
-                                            Some(format!("front-{notify_user}"))
+                                            Some(format!("front-{user_id}"))
                                         } else {
                                             None
                                         };
-                                        let kind = format!("front/{notify_user}");
+                                        let kind = format!("front/{user_id}");
                                         let _ = crate::notification::notify_user(&database_pool, notify_user, &username, &front_text, &kind, tag).await;
                                     }
                                 } else {
