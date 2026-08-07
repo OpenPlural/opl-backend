@@ -1,4 +1,4 @@
-use crate::database::{DatabasePool, DatabaseResult};
+use crate::database::{to_web_error, DatabasePool, DatabaseResult};
 use crate::model::auth::AccountInfo;
 use crate::model::user::{UserId, UserInfo};
 use crate::security::{hash, random_string, sha256, verify, SESSION_TOKEN_LENGTH};
@@ -6,6 +6,7 @@ use anyhow::anyhow;
 use sqlx::mysql::{MySqlArguments, MySqlRow};
 use sqlx::{query, Arguments, Executor, Row, Statement};
 use uuid::Uuid;
+use crate::error::WebError;
 
 pub async fn register(pool: &DatabasePool, user_name: &str, password: &str, system: bool) -> DatabaseResult<bool> {
     let user = query("SELECT 1 FROM User WHERE Name=?")
@@ -29,13 +30,18 @@ pub async fn register(pool: &DatabasePool, user_name: &str, password: &str, syst
     Ok(true)
 }
 
-pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, password: &str) -> DatabaseResult<Option<(AccountInfo, String)>> {
-    let user = query("SELECT ID, Name, Email, AvatarUrl, Description, Color, System, CreatedAt, FriendCode, Password FROM User WHERE Name=?")
+pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, password: &str) -> Result<(AccountInfo, String), WebError> {
+    let user = query("SELECT ID, Name, Email, AvatarUrl, Description, Color, System, CreatedAt, FriendCode, Password, AccountDisabled FROM User WHERE Name=?")
         .bind(user_name)
         .fetch_optional(pool.as_ref())
-        .await?;
+        .await
+        .map_err(to_web_error)?;
 
     if let Some(user) = user {
+        if user.get("AccountDisabled") {
+            return Err(WebError::AccountDisabled);
+        }
+
         let user_id: UserId = user.get("ID");
         let password_hash: String = user.get("Password");
 
@@ -56,15 +62,15 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
             let friend_code = friend_code.simple().to_string();
             let email = user.get("Email");
             let user = user_info(user, email);
-            return Ok(Some((AccountInfo {
+            return Ok((AccountInfo {
                 session: token_id,
                 created_at,
                 friend_code,
                 user,
-            }, token)));
+            }, token));
         }
     }
-    Ok(None)
+    Err(WebError::InvalidCredentials)
 }
 
 pub async fn delete(pool: &DatabasePool, id: UserId, password: &str) -> DatabaseResult<bool> {

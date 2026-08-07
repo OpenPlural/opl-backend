@@ -29,15 +29,12 @@ pub async fn login(req: Json<LoginRequest>, data: Data<AppState>) -> WebResult {
     let req = req.into_inner();
     req.validate().map_err(validation_error)?;
 
-    if let Some((user, token)) = crate::database::user::login(&data.pool, &req.device, &req.name, &req.password).await.map_err(to_web_error)? {
-        let cookie = make_session_cookie(token);
+    let (user, token) = crate::database::user::login(&data.pool, &req.device, &req.name, &req.password).await?;
+    let cookie = make_session_cookie(token);
 
-        let mut res = HttpResponse::Ok().json(user);
-        res.add_cookie(&cookie).map_err(|err| WebError::CantSetCookie(anyhow!("{:?}", err)))?;
-        Ok(res)
-    } else {
-        Err(WebError::InvalidCredentials)
-    }
+    let mut res = HttpResponse::Ok().json(user);
+    res.add_cookie(&cookie).map_err(|err| WebError::CantSetCookie(anyhow!("{:?}", err)))?;
+    Ok(res)
 }
 
 #[post("/delete-account")]
