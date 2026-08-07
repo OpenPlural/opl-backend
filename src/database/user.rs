@@ -35,7 +35,7 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
         .bind(user_name)
         .fetch_optional(pool.as_ref())
         .await
-        .map_err(to_web_error)?;
+        .map_err(|err| to_web_error(anyhow!(err)))?;
 
     if let Some(user) = user {
         if user.get("AccountDisabled") {
@@ -54,7 +54,8 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
                 .bind(token_hash)
                 .bind(device_name)
                 .fetch_one(pool.as_ref())
-                .await?;
+                .await
+                .map_err(|err| to_web_error(anyhow!(err)))?;
             let token_id = token_id.get(0);
 
             let created_at = user.get("CreatedAt");
