@@ -54,8 +54,10 @@ pub async fn add_front_entry(req: HttpRequest, data: Data<AppState>, body: Json<
     body.validate().map_err(validation_error)?;
     body.user_id = token.user_id;
 
-    if crate::database::front::is_fronting(&data.pool, token.user_id, body.member_id).await.map_err(to_web_error)? {
-        return Err(WebError::AlreadyFronting);
+    if body.ended_at.is_none() {
+        if crate::database::front::is_fronting(&data.pool, token.user_id, body.member_id).await.map_err(to_web_error)? {
+            return Err(WebError::AlreadyFronting);
+        }
     }
 
     let id = crate::database::front::add_front_entry(&data.pool, &body).await.map_err(to_web_error)?;
@@ -88,9 +90,11 @@ pub async fn edit_front_entry(req: HttpRequest, data: Data<AppState>, path: Path
     body.id = entry_id;
     body.user_id = token.user_id;
 
-    if let Some(active_entry) = crate::database::front::get_active_front_entry_by_member(&data.pool, token.user_id, body.member_id).await.map_err(to_web_error)? {
-        if active_entry.id != entry_id {
-            return Err(WebError::AlreadyFronting);
+    if body.ended_at.is_none() {
+        if let Some(active_entry) = crate::database::front::get_active_front_entry_by_member(&data.pool, token.user_id, body.member_id).await.map_err(to_web_error)? {
+            if active_entry.id != entry_id {
+                return Err(WebError::AlreadyFronting);
+            }
         }
     }
 
