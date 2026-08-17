@@ -5,17 +5,15 @@ use base64::Engine;
 use base64::prelude::BASE64_STANDARD_NO_PAD;
 use rand::{rng, RngExt};
 use rand::distr::Alphanumeric;
-use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha256, Sha512};
 use tokio::sync::OnceCell;
-use crate::error::WebError;
 
 static PASSWORD_HASH_ALGORITHM: OnceCell<Argon2> = OnceCell::const_new();
 
 pub const SESSION_TOKEN_LENGTH: usize = 128;
 pub const API_KEY_TOKEN_LENGTH: usize = 128;
 const SHA256_PEPPER: &'static str = "OpenPlural";
-
-const ADMIN_SECRET_TOKEN_SHA: &'static str = env!("ADMIN_SECRET_TOKEN_SHA");
+const SHA512_PEPPER: &'static str = "OpenPlural";
 
 async fn get_hash_algorithm() -> &'static Argon2<'static> {
     PASSWORD_HASH_ALGORITHM.get_or_init(|| async {
@@ -50,11 +48,8 @@ pub fn sha256(input: &str) -> String {
     BASE64_STANDARD_NO_PAD.encode(hash)
 }
 
-pub fn verify_admin_token(input: &str) -> Result<(), WebError> {
-    let hash = sha256(input);
-    if hash == ADMIN_SECRET_TOKEN_SHA {
-        Ok(())
-    } else {
-        Err(WebError::InvalidToken)
-    }
+pub fn sha512(input: &str) -> String {
+    let full_input = format!("{}{}{}", SHA512_PEPPER, input, SHA512_PEPPER);
+    let hash = Sha512::digest(full_input.as_bytes());
+    BASE64_STANDARD_NO_PAD.encode(hash)
 }

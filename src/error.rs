@@ -35,6 +35,8 @@ pub enum WebError {
     TokenPermissionDeniedWrite,
     #[error("Token does not have admin permissions (only actual sessions have admin permissions)")]
     TokenPermissionDeniedAdmin,
+    #[error("This endpoint requires a non-virtual session")]
+    TokenPermissionDeniedVirtual,
 
     #[error("You do not have permission to perform this action on this user")]
     FriendPermissionDenied,
@@ -77,6 +79,7 @@ impl ResponseError for WebError {
 
             WebError::TokenPermissionDeniedWrite => StatusCode::FORBIDDEN,
             WebError::TokenPermissionDeniedAdmin => StatusCode::FORBIDDEN,
+            WebError::TokenPermissionDeniedVirtual => StatusCode::FORBIDDEN,
 
             WebError::FriendPermissionDenied => StatusCode::FORBIDDEN,
             WebError::FriendRequestAlreadySent => StatusCode::CONFLICT,

@@ -89,8 +89,8 @@ impl ResetPasswordRequest {
 
 #[derive(Debug, Serialize)]
 pub struct AccountInfo {
-    #[serde(deserialize_with = "crate::numberstring::deserialize")]
-    pub session: SessionId,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub session: Option<SessionId>,
     #[serde(rename = "createdAt")]
     pub created_at: DateTime<Utc>,
     #[serde(rename = "friendCode")]

@@ -1,9 +1,11 @@
 use crate::database::to_web_error;
 use crate::middleware::{get_token, RequestToken};
-use crate::web::{ok, ok_none, ok_none_unauth, WebResult};
+use crate::web::{not_found, ok, ok_none, ok_none_unauth, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Path};
 use actix_web::{delete, get, HttpRequest};
+use crate::error::WebError;
+use crate::model::auth::AccountInfo;
 use crate::model::session::SessionId;
 
 #[get("/")]
@@ -18,7 +20,7 @@ pub async fn get_sessions(req: HttpRequest, data: Data<AppState>) -> WebResult {
 #[delete("/self")]
 pub async fn invalidate_current_session(req: HttpRequest, data: Data<AppState>) -> WebResult {
     let token: RequestToken = get_token(&req).unwrap();
-    token.require_session()?;
+    token.require_real_session()?;
 
     crate::database::session::delete_session(&data.pool, token.user_id, token.session_id.unwrap()).await.map_err(to_web_error)?;
     ok_none_unauth()
@@ -31,9 +33,32 @@ pub async fn invalidate_session(req: HttpRequest, data: Data<AppState>, path: Pa
 
     let token_id = path.into_inner();
     crate::database::session::delete_session(&data.pool, token.user_id, token_id).await.map_err(to_web_error)?;
-    if token_id == token.session_id.unwrap() {
+    if let Some(session_id) = token.session_id && token_id == session_id {
         ok_none_unauth()
     } else {
         ok_none()
+    }
+}
+
+#[get("/virtual")]
+pub async fn initialize_virtual_session(req: HttpRequest, data: Data<AppState>) -> WebResult {
+    let token: RequestToken = get_token(&req).unwrap();
+    token.require_session()?;
+
+    if !token.virtual_session {
+        return Err(WebError::InvalidToken);
+    }
+
+    if let Some((user, friend_code)) = crate::database::user::get_user_by_id(&data.pool, token.user_id, true).await.map_err(to_web_error)? {
+        let created_at = crate::database::user::get_user_creation_date(&data.pool, token.user_id).await.map_err(to_web_error)?;
+
+        ok(AccountInfo {
+            session: None,
+            created_at: created_at.unwrap(),
+            friend_code,
+            user,
+        })
+    } else {
+        not_found()
     }
 }
