@@ -10,6 +10,7 @@ mod middleware;
 mod notification;
 mod frontwatch;
 mod numberstring;
+mod list_map;
 
 use crate::database::DatabasePool;
 use crate::middleware::authenticator_mw;

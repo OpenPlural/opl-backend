@@ -7,6 +7,8 @@ use crate::model::member::MemberId;
 pub type PollId = i64;
 pub type PollAnswerId = i64;
 
+pub const POLL_MAX_OPTIONS: usize = 16;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Poll {
     #[serde(skip_deserializing)]
@@ -52,7 +54,7 @@ impl Poll {
         }
         if let Some(custom_options) = &self.custom_options {
             validate_string_length("Poll", "custom_options", &custom_options.join(""), Some(1), Some(65000), true)?;
-            validate_number_range("Poll", "Length(custom_options)", custom_options.len() as isize, 2, 16)?;
+            validate_number_range("Poll", "Length(custom_options)", custom_options.len() as isize, 2, POLL_MAX_OPTIONS as isize)?;
         }
         Ok(())
     }

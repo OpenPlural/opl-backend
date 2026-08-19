@@ -1,7 +1,7 @@
 use crate::database::to_web_error;
 use crate::middleware::get_token;
 use crate::model::folder::FolderId;
-use crate::model::import::{Import, ImportCustomField, ImportFolder, ImportMember, ImportPrivacyBucket};
+use crate::model::import::{Import, ImportCustomField, ImportFolder, ImportMember, ImportPoll, ImportPollAnswer, ImportPrivacyBucket};
 use crate::model::member::MemberId;
 use crate::web::{ok, WebResult};
 use crate::AppState;
@@ -14,6 +14,8 @@ use std::time::Duration;
 use tokio::sync::{Mutex, OnceCell};
 use tokio::time::Instant;
 use crate::error::WebError;
+use crate::list_map::append;
+use crate::model::poll::PollId;
 use crate::model::user::UserId;
 
 const COOLDOWN_DURATION: Duration = Duration::from_hours(6);
@@ -97,7 +99,8 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
     let mut member_privacy = list_to_map(member_privacy);
     let members = crate::database::member::get_members(&data.pool, user_id, None).await.map_err(to_web_error)?;
     let members = members.into_iter().map(|m| ImportMember {
-        name: m.id.to_string(),
+        id: m.id.to_string(),
+        name: m.name.to_string(),
         pronouns: m.pronouns,
         avatar: m.avatar,
         description: m.description,
@@ -110,11 +113,35 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
         privacy: member_privacy.remove(&m.id).unwrap_or_default(),
     }).collect();
 
+    let poll_answers = crate::database::poll::get_poll_answers_by_user_id(&data.pool, user_id).await.map_err(to_web_error)?;
+    let mut poll_answers: HashMap<PollId, Vec<ImportPollAnswer>> = poll_answers.into_iter().fold(HashMap::new(), |mut map, answer| {
+        let poll_id = answer.poll_id;
+        let answer = ImportPollAnswer {
+            member_id: answer.member_id.to_string(),
+            answer: answer.answer,
+            comment: answer.comment,
+        };
+        append(&mut map, poll_id, answer);
+        map
+    });
+
+    let polls = crate::database::poll::get_polls(&data.pool, user_id).await.map_err(to_web_error)?;
+    let polls = polls.into_iter().map(|p| ImportPoll {
+        name: p.name.clone(),
+        description: p.description.clone(),
+        allow_abstain: p.allow_abstain,
+        allow_veto: p.allow_veto,
+        open_until: p.open_until,
+        custom_options: p.custom_options.clone(),
+        answers: poll_answers.remove(&p.id).unwrap_or_default(),
+    }).collect();
+
     ok(Import {
         privacy: Some(privacy),
         fields: Some(custom_fields),
         folders: Some(folders),
         members: Some(members),
+        polls: Some(polls),
         truncate: false,
     })
 }

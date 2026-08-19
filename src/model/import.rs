@@ -2,8 +2,10 @@ use crate::model::fields::{CustomField, CustomFieldDataType};
 use crate::model::privacy::PrivacyBucket;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use chrono::{DateTime, Utc};
 use crate::model::folder::Folder;
-use crate::model::member::Member;
+use crate::model::member::{Member, MemberId};
+use crate::model::poll::{Poll, POLL_MAX_OPTIONS};
 
 #[derive(Deserialize, Serialize)]
 pub struct Import {
@@ -11,6 +13,7 @@ pub struct Import {
     pub fields: Option<Vec<ImportCustomField>>,
     pub folders: Option<Vec<ImportFolder>>,
     pub members: Option<Vec<ImportMember>>,
+    pub polls: Option<Vec<ImportPoll>>,
     #[serde(skip_serializing)]
     pub truncate: bool,
 }
@@ -131,6 +134,7 @@ impl Into<Folder> for ImportFolder {
 
 #[derive(Serialize, Deserialize)]
 pub struct ImportMember {
+    pub id: String,
     pub name: String,
     pub pronouns: Option<String>,
     pub avatar: Option<String>,
@@ -175,6 +179,62 @@ impl Into<Member> for ImportMember {
             user_id: 0,
             folders: vec![],
             created_at: Default::default(),
+            updated_at: Default::default(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ImportPoll {
+    pub name: String,
+    pub description: Option<String>,
+    #[serde(rename = "allowAbstain")]
+    pub allow_abstain: bool,
+    #[serde(rename = "allowVeto")]
+    pub allow_veto: bool,
+    #[serde(rename = "openUntil")]
+    pub open_until: DateTime<Utc>,
+    #[serde(rename = "customOptions")]
+    pub custom_options: Option<Vec<String>>,
+    pub answers: Vec<ImportPollAnswer>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ImportPollAnswer {
+    #[serde(rename = "memberId")]
+    pub member_id: String,
+    pub answer: u8,
+    pub comment: Option<String>,
+}
+
+impl ImportPoll {
+    pub fn truncate(&mut self) {
+        self.name.truncate(self.name.floor_char_boundary(255));
+        if let Some(description) = &mut self.description {
+            description.truncate(description.floor_char_boundary(65535));
+        }
+        if let Some(custom_options) = &mut self.custom_options {
+            custom_options.truncate(POLL_MAX_OPTIONS);
+        }
+        for answer in &mut self.answers {
+            if let Some(comment) = &mut answer.comment {
+                comment.truncate(comment.floor_char_boundary(255));
+            }
+        }
+    }
+}
+
+impl Into<Poll> for ImportPoll {
+    fn into(self) -> Poll {
+        Poll {
+            name: self.name,
+            description: self.description,
+            id: 0,
+            user_id: 0,
+            allow_abstain: self.allow_abstain,
+            allow_veto: self.allow_veto,
+            open_until: self.open_until,
+            custom_options: self.custom_options,
             updated_at: Default::default(),
         }
     }
