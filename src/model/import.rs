@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use crate::model::folder::Folder;
-use crate::model::member::{Member, MemberId};
+use crate::model::member::Member;
 use crate::model::poll::{Poll, POLL_MAX_OPTIONS};
 
 #[derive(Deserialize, Serialize)]

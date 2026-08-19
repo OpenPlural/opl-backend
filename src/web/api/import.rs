@@ -179,7 +179,7 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
                                 comment: answer.comment,
                                 updated_at: Default::default(),
                             };
-                            answer.validate().map_err(to_web_error)?;
+                            answer.validate().map_err(validation_error)?;
                             crate::database::poll::create_poll_answer(transaction.as_mut(), &answer).await.map_err(to_web_error)?;
                         }
                     }

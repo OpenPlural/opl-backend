@@ -38,7 +38,7 @@ pub async fn create_poll(req: HttpRequest, data: Data<AppState>, body: Json<Poll
     body.validate().map_err(validation_error)?;
     body.user_id = token.user_id;
 
-    let id = crate::database::poll::create_poll(&data.pool, &body).await.map_err(to_web_error)?;
+    let id = crate::database::poll::create_poll(&*data.pool, &body).await.map_err(to_web_error)?;
     ok(IdResponse {
         id
     })
@@ -99,7 +99,7 @@ pub async fn create_poll_answer(req: HttpRequest, data: Data<AppState>, body: Js
     body.validate().map_err(validation_error)?;
     body.user_id = token.user_id;
 
-    let id = crate::database::poll::create_poll_answer(&data.pool, &body).await.map_err(to_web_error)?;
+    let id = crate::database::poll::create_poll_answer(&*data.pool, &body).await.map_err(to_web_error)?;
     ok(IdResponse {
         id
     })
