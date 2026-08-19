@@ -11,6 +11,7 @@ pub mod time;
 pub mod apikey;
 pub mod notification;
 pub mod admin;
+pub mod poll;
 
 use std::collections::HashMap;
 use std::hash::Hash;

@@ -15,6 +15,7 @@ pub mod apikey;
 pub mod notification;
 pub mod import;
 pub mod admin;
+pub mod poll;
 
 #[derive(Debug, Deserialize)]
 pub struct PageQuery {
