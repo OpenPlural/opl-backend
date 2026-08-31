@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
 pub mod auth;
@@ -21,6 +22,12 @@ pub mod poll;
 pub struct PageQuery {
     #[serde(default)]
     pub page: u32
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DateRangeQuery {
+    pub start: NaiveDate,
+    pub end: NaiveDate,
 }
 
 #[derive(Debug, Serialize)]

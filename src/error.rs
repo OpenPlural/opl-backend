@@ -21,6 +21,8 @@ pub enum WebError {
     WebPushEndpointNotTrusted,
     #[error("You can only do this every {0}")]
     WaitCooldown(&'static str),
+    #[error("You can't request more than {0} at a time")]
+    DateRangeTooBig(&'static str),
 
     #[error("Account registration is disabled")]
     RegistrationDisabled,
@@ -57,8 +59,6 @@ pub enum WebError {
 
     #[error("This member is already fronting")]
     AlreadyFronting,
-    #[error("You can't request the front history for more than 30 days at a time")]
-    FrontHistoryDateRangeTooBig,
 
     #[error("You can't change the poll type (from custom to yes/no or vice-versa)")]
     CantChangePollType,
@@ -76,6 +76,7 @@ impl ResponseError for WebError {
             WebError::CantSetCookie(_) => StatusCode::INTERNAL_SERVER_ERROR,
             WebError::WebPushEndpointNotTrusted => StatusCode::FORBIDDEN,
             WebError::WaitCooldown(_) => StatusCode::TOO_MANY_REQUESTS,
+            WebError::DateRangeTooBig(_) => StatusCode::PAYLOAD_TOO_LARGE,
 
             WebError::RegistrationDisabled => StatusCode::FORBIDDEN,
             WebError::UsernameAlreadyExists => StatusCode::CONFLICT,
@@ -96,7 +97,6 @@ impl ResponseError for WebError {
             WebError::CantFriendSelf => StatusCode::FORBIDDEN,
 
             WebError::AlreadyFronting => StatusCode::CONFLICT,
-            WebError::FrontHistoryDateRangeTooBig => StatusCode::PAYLOAD_TOO_LARGE,
 
             WebError::CantChangePollType => StatusCode::FORBIDDEN,
             
