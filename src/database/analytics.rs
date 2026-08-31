@@ -5,7 +5,7 @@ use crate::model::user::UserId;
 use sqlx::{query, Row};
 
 pub async fn get_analytics(pool: &DatabasePool, user_id: UserId, start: DateTime<Utc>, end: DateTime<Utc>) -> DatabaseResult<Analytics> {
-    let members = query("SELECT MemberId, COUNT(*) AS FrontCount, SUM(TIMESTAMPDIFF(MINUTE, StartedAt, IFNULL(EndedAt, CURRENT_TIMESTAMP()))) AS FrontMinutes FROM Front WHERE UserId = ? AND StartedAt >= ? AND (EndedAt IS NULL OR EndedAt <= ?) GROUP BY MemberId")
+    let members = query("SELECT MemberId, COUNT(*) AS FrontCount, CAST(SUM(TIMESTAMPDIFF(MINUTE, StartedAt, IFNULL(EndedAt, CURRENT_TIMESTAMP()))) AS SIGNED) AS FrontMinutes FROM Front WHERE UserId = ? AND StartedAt >= ? AND (EndedAt IS NULL OR EndedAt <= ?) GROUP BY MemberId")
         .bind(user_id)
         .bind(start)
         .bind(end)
