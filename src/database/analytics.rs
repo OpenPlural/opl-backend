@@ -23,6 +23,6 @@ pub async fn get_analytics(pool: &DatabasePool, user_id: UserId, start: DateTime
         }
     }).collect();
     Ok(Analytics {
-        member: member_analytics
+        members: member_analytics
     })
 }

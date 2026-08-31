@@ -20,7 +20,7 @@ pub async fn get_analytics(req: HttpRequest, data: Data<AppState>, query: Query<
 
     if end < start {
         return ok(Analytics {
-            member: vec![]
+            members: vec![]
         });
     }
     if end.signed_duration_since(&start) > ANALYTICS_MAX_DATE_RANGE {
