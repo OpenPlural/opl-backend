@@ -16,7 +16,7 @@ use crate::database::DatabasePool;
 use crate::middleware::authenticator_mw;
 use crate::web::api::folder::{create_folder, delete_folder, edit_folder, get_folder, get_folder_privacy, get_folders, set_folder_privacy};
 use crate::web::api::friend::{accept_friend_request, cancel_friend_request, decline_friend_request, get_friend_privacy, get_friends, get_incoming_friend_requests, get_outgoing_friend_requests, get_settings, send_friend_request, unfriend, update_settings};
-use crate::web::api::front::{add_front_entry, delete_front_entry, edit_front_entry, get_front_entries, get_front_entry, get_front_history};
+use crate::web::api::front::{add_front_entry, delete_front_entry, edit_front_entry, get_front_entries, get_front_entry, get_front_history, get_front_history_by_date_range};
 use crate::web::api::member::{create_member, delete_member, edit_member, edit_member_folders, get_member, get_member_field_values, get_member_fields, get_member_front_entry, get_member_front_history, get_member_privacy, get_members};
 use crate::web::api::session::{get_sessions, initialize_virtual_session, invalidate_current_session, invalidate_session};
 use crate::web::api::sync::sync;
@@ -155,6 +155,7 @@ async fn main() -> std::io::Result<()> {
                     )
                     .service(
                         scope("/front")
+                            .service(get_front_history_by_date_range)
                             .service(get_front_history)
                             .service(get_front_entries)
                             .service(get_front_entry)

@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use crate::model::member::MemberId;
 use crate::model::user::UserId;
@@ -48,4 +48,10 @@ impl From<FrontEntry> for ViewedFrontEntry {
             comment: entry.comment,
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FrontDateRangeQuery {
+    pub start: NaiveDate,
+    pub end: NaiveDate,
 }
