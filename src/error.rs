@@ -57,6 +57,8 @@ pub enum WebError {
 
     #[error("This member is already fronting")]
     AlreadyFronting,
+    #[error("You can't request the front history for more than 30 days at a time")]
+    FrontHistoryDateRangeTooBig,
 
     #[error("You can't change the poll type (from custom to yes/no or vice-versa)")]
     CantChangePollType,
@@ -94,6 +96,7 @@ impl ResponseError for WebError {
             WebError::CantFriendSelf => StatusCode::FORBIDDEN,
 
             WebError::AlreadyFronting => StatusCode::CONFLICT,
+            WebError::FrontHistoryDateRangeTooBig => StatusCode::PAYLOAD_TOO_LARGE,
 
             WebError::CantChangePollType => StatusCode::FORBIDDEN,
             

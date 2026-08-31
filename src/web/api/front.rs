@@ -1,13 +1,14 @@
 use crate::database::to_web_error;
 use crate::middleware::get_token;
 use crate::model::friend::PERMISSION_LEVEL_FRONT;
-use crate::model::front::{FrontEntry, FrontEntryId, ViewedFrontEntry};
+use crate::model::front::{FrontDateRangeQuery, FrontEntry, FrontEntryId, ViewedFrontEntry};
 use crate::model::user::UserFilter;
 use crate::model::{IdResponse, PageQuery};
 use crate::web::{not_found, ok, ok_none, validation_error, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Json, Path, Query};
 use actix_web::{delete, get, patch, put, HttpRequest};
+use chrono::{NaiveTime, TimeDelta};
 use crate::error::WebError;
 
 #[get("/")]
@@ -108,5 +109,23 @@ pub async fn get_front_history(req: HttpRequest, data: Data<AppState>, query: Qu
     let token = get_token(&req).unwrap();
 
     let front = crate::database::front::get_front_history(&data.pool, token.user_id, query.page).await.map_err(to_web_error)?;
+    ok(front)
+}
+
+#[get("/history/by-date")]
+pub async fn get_front_history_by_date_range(req: HttpRequest, data: Data<AppState>, query: Query<FrontDateRangeQuery>) -> WebResult {
+    let token = get_token(&req).unwrap();
+
+    let start = query.start.and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap()).and_utc();
+    let end = query.end.and_time(NaiveTime::from_hms_opt(23, 59, 59).unwrap()).and_utc();
+
+    if end < start {
+        return ok(Vec::<FrontEntry>::new());
+    }
+    if end.signed_duration_since(&start) > TimeDelta::days(30) {
+        return Err(WebError::FrontHistoryDateRangeTooBig);
+    }
+
+    let front = crate::database::front::get_front_history_by_date_range(&data.pool, token.user_id, start, end).await.map_err(to_web_error)?;
     ok(front)
 }

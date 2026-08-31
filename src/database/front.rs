@@ -90,6 +90,20 @@ pub async fn get_front_history(pool: &DatabasePool, user_id: UserId, page: u32) 
     }).collect())
 }
 
+pub async fn get_front_history_by_date_range(pool: &DatabasePool, user_id: UserId, start: DateTime<Utc>, end: DateTime<Utc>) -> DatabaseResult<Vec<FrontEntry>> {
+    let entries = query("SELECT ID, MemberId, StartedAt, EndedAt, Comment, UpdatedAt FROM Front WHERE UserId = ? AND StartedAt >= ? AND (EndedAt IS NULL OR EndedAt <= ?)")
+        .bind(user_id)
+        .bind(start)
+        .bind(end)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+    Ok(entries.into_iter().map(|row| {
+        let ended_at = row.get("EndedAt");
+        front_entry(row, user_id, ended_at)
+    }).collect())
+}
+
 pub async fn get_front_history_of_member(pool: &DatabasePool, user_id: UserId, member_id: MemberId, page: u32) -> DatabaseResult<Vec<FrontEntry>> {
     let entries = query("SELECT ID, MemberId, StartedAt, EndedAt, Comment, UpdatedAt FROM Front WHERE UserId = ? AND MemberId = ? ORDER BY StartedAt DESC LIMIT ?, 50")
         .bind(user_id)
