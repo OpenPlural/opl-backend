@@ -231,6 +231,12 @@ pub async fn edit_member_folders(pool: &DatabasePool, member_id: MemberId, user_
         add_member_folder(&mut *tx, member_id, user_id, *folder_id).await?;
     }
 
+    query("UPDATE Member SET UpdatedAt=CURRENT_TIMESTAMP() WHERE ID = ? AND UserId = ?")
+        .bind(member_id)
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await?;
+
     tx.commit().await?;
     Ok(())
 }
