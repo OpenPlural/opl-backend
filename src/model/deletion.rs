@@ -13,4 +13,6 @@ pub enum DeletionResourceType {
     Member = 1,
     CustomField = 2,
     CustomFieldDataValue = 3,
+    Poll = 4,
+    PollAnswer = 5,
 }

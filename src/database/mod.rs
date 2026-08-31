@@ -11,6 +11,7 @@ pub mod time;
 pub mod apikey;
 pub mod notification;
 pub mod admin;
+pub mod poll;
 
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -18,6 +19,7 @@ use std::sync::Arc;
 use sqlx::mysql::MySqlRow;
 use sqlx::{Decode, Executor, MySql, MySqlPool, Row, Type};
 use crate::error::WebError;
+use crate::list_map::append;
 
 pub type DatabasePool = Arc<MySqlPool>;
 pub type DatabaseResult<T> = Result<T, anyhow::Error>;
@@ -36,13 +38,7 @@ where
     for row in rows {
         let key: K = row.get(key);
         let value: V = row.get(value);
-
-        if let Some(list) = map.get_mut(&key) {
-            list.push(value);
-        } else {
-            let list = vec![value];
-            map.insert(key, list);
-        }
+        append(&mut map, key, value);
     }
     map.values_mut().for_each(|list| list.sort());
     map
