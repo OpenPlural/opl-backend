@@ -3,7 +3,7 @@ use crate::model::member::MemberId;
 
 #[derive(Debug, Serialize)]
 pub struct Analytics {
-    pub member: Vec<AnalyticsMember>,
+    pub members: Vec<AnalyticsMember>,
 }
 
 #[derive(Debug, Serialize)]
