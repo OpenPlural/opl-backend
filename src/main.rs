@@ -42,7 +42,7 @@ use crate::web::admin::user::{disable_user, enable_user, export_user, get_all_us
 use crate::web::api::analytics::get_analytics;
 use crate::web::api::apikey::{create_api_key, delete_api_key, get_api_keys};
 use crate::web::api::export::export;
-use crate::web::api::fields::{clear_field_value, create_field, create_field_value, delete_field, edit_field, get_field, get_field_privacy, get_field_value, get_field_values, get_fields, get_specific_field_values, reorder_fields, update_field_value};
+use crate::web::api::fields::{clear_field_value, create_field, create_field_value, delete_field, edit_field, get_field, get_field_privacy, get_field_value, get_field_values, get_fields, get_specific_field_values, update_field_value};
 use crate::web::api::import::import;
 use crate::web::api::notification::subscribe;
 use crate::web::api::poll::{create_poll, create_poll_answer, delete_poll, delete_poll_answer, edit_poll, edit_poll_answer, get_poll, get_poll_answers, get_polls};
@@ -125,7 +125,6 @@ async fn main() -> std::io::Result<()> {
                             .service(create_field)
                             .service(delete_field)
                             .service(edit_field)
-                            .service(reorder_fields)
                             .service(get_specific_field_values)
                             .service(get_field_values)
                             .service(get_field_value)

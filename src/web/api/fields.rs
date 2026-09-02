@@ -5,7 +5,7 @@ use crate::model::IdResponse;
 use crate::web::{not_found, ok, ok_none, validation_error, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Json, Path};
-use actix_web::{delete, get, patch, post, put, HttpRequest};
+use actix_web::{delete, get, patch, put, HttpRequest};
 use crate::error::WebError;
 
 #[get("/")]
@@ -66,16 +66,6 @@ pub async fn edit_field(req: HttpRequest, data: Data<AppState>, path: Path<Custo
     body.user_id = token.user_id;
 
     crate::database::fields::edit_field(&data.pool, &body).await.map_err(to_web_error)?;
-    ok_none()
-}
-
-#[post("/reorder")]
-pub async fn reorder_fields(req: HttpRequest, data: Data<AppState>, body: Json<Vec<CustomFieldId>>) -> WebResult {
-    let token = get_token(&req).unwrap();
-    token.require_write()?;
-
-    let body = body.into_inner();
-    crate::database::fields::reorder_fields(&data.pool, body, token.user_id).await.map_err(to_web_error)?;
     ok_none()
 }
 

@@ -79,23 +79,6 @@ pub async fn edit_field(pool: &DatabasePool, field: &CustomField) -> DatabaseRes
     Ok(())
 }
 
-pub async fn reorder_fields(pool: &DatabasePool, ids: Vec<CustomFieldId>, user_id: UserId) -> DatabaseResult<()> {
-    let placeholders = ids.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
-    let sql = format!("UPDATE CustomField SET Sort=field(ID, {placeholders}) WHERE ID IN ({placeholders}) AND UserId = ?");
-    let mut query = query(sql.as_str());
-    for id in &ids {
-        query = query.bind(id);
-    }
-    for id in &ids {
-        query = query.bind(id);
-    }
-    query
-        .bind(user_id)
-        .execute(pool.as_ref())
-        .await?;
-    Ok(())
-}
-
 pub async fn get_field_value_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<CustomFieldDataId>> {
     let ids = query("SELECT ID FROM CustomFieldData WHERE UserId = ?")
         .bind(user_id)
