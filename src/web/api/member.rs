@@ -2,6 +2,7 @@ use crate::database::to_web_error;
 use crate::middleware::get_token;
 use crate::model::folder::FolderId;
 use crate::model::friend::PERMISSION_LEVEL_MEMBERS;
+use crate::model::gallery::{PhotoAlbum, PhotoAlbumId};
 use crate::model::member::{ExtendedViewedMember, Member, MemberId, MemberQuery, ViewedMember};
 use crate::model::user::UserFilter;
 use crate::model::{IdResponse, PageQuery};
@@ -45,9 +46,11 @@ pub async fn get_member(req: HttpRequest, data: Data<AppState>, path: Path<Membe
                 let folders = crate::database::folder::get_folders_by_ids(&data.pool, &member.folders, user_id).await.map_err(to_web_error)?;
                 folders.into_iter().map(Into::into).collect()
             };
+            let has_gallery = crate::database::gallery::has_member_gallery(&data.pool, member.id, user_id, token.as_friend_viewer(user_id)).await.map_err(to_web_error)?;
             ok(ExtendedViewedMember {
                 member: member.into(),
                 folders,
+                has_gallery,
             })
         } else if token.user_id != user_id {
             ok(ViewedMember::from(member))
@@ -146,6 +149,82 @@ pub async fn get_member_front_entry(req: HttpRequest, data: Data<AppState>, path
     let member_id = path.into_inner();
     let entry = crate::database::front::get_active_front_entry_by_member(&data.pool, token.user_id, member_id).await.map_err(to_web_error)?;
     ok(entry)
+}
+
+#[get("/{memberId}/gallery")]
+pub async fn get_member_gallery(req: HttpRequest, data: Data<AppState>, path: Path<MemberId>, query: Query<UserFilter>) -> WebResult {
+    let token = get_token(&req).unwrap();
+    let user_id = query.user_id.unwrap_or(token.user_id);
+    token.check_friendship_permissions(&data.pool, user_id, PERMISSION_LEVEL_MEMBERS).await?;
+
+    let member_id = path.into_inner();
+    let albums = crate::database::gallery::get_viewed_photo_albums_for_member(&data.pool, user_id, member_id, token.as_friend_viewer(user_id)).await.map_err(to_web_error)?;
+    ok(albums)
+}
+
+#[put("/{memberId}/gallery")]
+pub async fn create_photo_album(req: HttpRequest, data: Data<AppState>, path: Path<MemberId>, body: Json<PhotoAlbum>) -> WebResult {
+    let token = get_token(&req).unwrap();
+    token.require_write()?;
+
+    let member_id = path.into_inner();
+
+    let mut body = body.into_inner();
+    body.validate().map_err(validation_error)?;
+    body.user_id = token.user_id;
+    body.member_id = member_id;
+
+    let id = crate::database::gallery::create_photo_album(&*data.pool, &body).await.map_err(to_web_error)?;
+    ok(IdResponse {
+        id
+    })
+}
+
+#[delete("/{memberId}/gallery/{albumId}")]
+pub async fn delete_photo_album(req: HttpRequest, data: Data<AppState>, path: Path<(MemberId, PhotoAlbumId)>) -> WebResult {
+    let token = get_token(&req).unwrap();
+    token.require_write()?;
+
+    let (member_id, album_id) = path.into_inner();
+    crate::database::gallery::delete_photo_album(&data.pool, album_id, member_id, token.user_id).await.map_err(to_web_error)?;
+    ok_none()
+}
+
+#[delete("/gallery/{albumId}")]
+pub async fn delete_photo_album_by_id(req: HttpRequest, data: Data<AppState>, path: Path<PhotoAlbumId>) -> WebResult {
+    let token = get_token(&req).unwrap();
+    token.require_write()?;
+
+    let album_id = path.into_inner();
+    crate::database::gallery::delete_photo_album_by_id(&data.pool, album_id, token.user_id).await.map_err(to_web_error)?;
+    ok_none()
+}
+
+#[patch("/{memberId}/gallery/{albumId}")]
+pub async fn edit_photo_album(req: HttpRequest, data: Data<AppState>, path: Path<(MemberId, PhotoAlbumId)>, body: Json<PhotoAlbum>) -> WebResult {
+    let token = get_token(&req).unwrap();
+    token.require_write()?;
+
+    let mut body = body.into_inner();
+    body.validate().map_err(validation_error)?;
+
+    let (member_id, album_id) = path.into_inner();
+    body.id = album_id;
+    body.user_id = token.user_id;
+    body.member_id = member_id;
+
+    crate::database::gallery::edit_photo_album(&data.pool, &body).await.map_err(to_web_error)?;
+    ok_none()
+}
+
+#[get("/{memberId}/gallery/{albumId}/privacy")]
+pub async fn get_photo_album_privacy(req: HttpRequest, data: Data<AppState>, path: Path<(MemberId, PhotoAlbumId)>) -> WebResult {
+    let token = get_token(&req).unwrap();
+
+    let (_, album_id) = path.into_inner();
+
+    let buckets = crate::database::privacy::get_photo_album_privacy_buckets(&data.pool, album_id, token.user_id).await.map_err(to_web_error)?;
+    ok(buckets)
 }
 
 #[get("/{id}/privacy")]

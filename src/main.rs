@@ -17,7 +17,7 @@ use crate::middleware::authenticator_mw;
 use crate::web::api::folder::{create_folder, delete_folder, edit_folder, get_folder, get_folder_privacy, get_folders, set_folder_privacy};
 use crate::web::api::friend::{accept_friend_request, cancel_friend_request, decline_friend_request, get_friend_privacy, get_friends, get_incoming_friend_requests, get_outgoing_friend_requests, get_settings, send_friend_request, unfriend, update_settings};
 use crate::web::api::front::{add_front_entry, delete_front_entry, edit_front_entry, get_front_entries, get_front_entry, get_front_history, get_front_history_by_date_range};
-use crate::web::api::member::{create_member, delete_member, edit_member, edit_member_folders, get_member, get_member_field_values, get_member_fields, get_member_front_entry, get_member_front_history, get_member_privacy, get_members};
+use crate::web::api::member::{create_member, create_photo_album, delete_member, delete_photo_album, delete_photo_album_by_id, edit_member, edit_member_folders, edit_photo_album, get_member, get_member_field_values, get_member_fields, get_member_front_entry, get_member_front_history, get_member_gallery, get_member_privacy, get_members, get_photo_album_privacy};
 use crate::web::api::session::{get_sessions, initialize_virtual_session, invalidate_current_session, invalidate_session};
 use crate::web::api::sync::sync;
 use crate::web::api::user::{change_friend_code, edit_user, get_self_user, get_user, get_username};
@@ -46,7 +46,7 @@ use crate::web::api::fields::{clear_field_value, create_field, create_field_valu
 use crate::web::api::import::import;
 use crate::web::api::notification::subscribe;
 use crate::web::api::poll::{create_poll, create_poll_answer, delete_poll, delete_poll_answer, edit_poll, edit_poll_answer, get_poll, get_poll_answers, get_polls};
-use crate::web::api::privacy::{add_privacy_bucket_custom_field, add_privacy_bucket_folder, add_privacy_bucket_friend, add_privacy_bucket_member, create_privacy_bucket, delete_privacy_bucket, edit_privacy_bucket, get_privacy_bucket, get_privacy_buckets, remove_privacy_bucket_custom_field, remove_privacy_bucket_folder, remove_privacy_bucket_friend, remove_privacy_bucket_member, reorder_privacy_buckets};
+use crate::web::api::privacy::{add_privacy_bucket_custom_field, add_privacy_bucket_folder, add_privacy_bucket_friend, add_privacy_bucket_member, add_privacy_bucket_photo_album, create_privacy_bucket, delete_privacy_bucket, edit_privacy_bucket, get_privacy_bucket, get_privacy_buckets, remove_privacy_bucket_custom_field, remove_privacy_bucket_folder, remove_privacy_bucket_friend, remove_privacy_bucket_member, remove_privacy_bucket_photo_album, reorder_privacy_buckets};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -183,6 +183,12 @@ async fn main() -> std::io::Result<()> {
                             .service(get_member_fields)
                             .service(get_member_front_history)
                             .service(get_member_front_entry)
+                            .service(get_member_gallery)
+                            .service(create_photo_album)
+                            .service(delete_photo_album)
+                            .service(delete_photo_album_by_id)
+                            .service(edit_photo_album)
+                            .service(get_photo_album_privacy)
                             .service(get_member_privacy)
                     )
                     .service(
@@ -212,10 +218,12 @@ async fn main() -> std::io::Result<()> {
                             .service(add_privacy_bucket_folder)
                             .service(add_privacy_bucket_member)
                             .service(add_privacy_bucket_custom_field)
+                            .service(add_privacy_bucket_photo_album)
                             .service(add_privacy_bucket_friend)
                             .service(remove_privacy_bucket_folder)
                             .service(remove_privacy_bucket_member)
                             .service(remove_privacy_bucket_custom_field)
+                            .service(remove_privacy_bucket_photo_album)
                             .service(remove_privacy_bucket_friend)
                     )
                     .service(

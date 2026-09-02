@@ -5,6 +5,7 @@ use sqlx::mysql::MySqlRow;
 use sqlx::{query, Row};
 use crate::model::fields::CustomFieldId;
 use crate::model::folder::FolderId;
+use crate::model::gallery::PhotoAlbumId;
 use crate::model::member::MemberId;
 
 pub async fn get_privacy_buckets(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<PrivacyBucket>> {
@@ -299,6 +300,47 @@ pub async fn get_custom_field_privacy_buckets(pool: &DatabasePool, field_id: Cus
 
 pub async fn get_custom_field_privacy_entries(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<(CustomFieldId, PrivacyBucketId)>> {
     let res = query("SELECT FieldId, BucketId FROM PrivacyBucketCustomField WHERE UserId = ?")
+        .bind(user_id)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+    Ok(res.into_iter().map(|row| (row.get(0), row.get(1))).collect())
+}
+
+pub async fn add_privacy_bucket_photo_album<'a, E: DatabaseExecutor<'a>>(executor: E, bucket_id: PrivacyBucketId, user_id: UserId, album_id: PhotoAlbumId) -> DatabaseResult<()> {
+    query("INSERT INTO PrivacyBucketPhotoAlbum (UserId, BucketId, PhotoAlbumId) VALUES (?, ?, ?)")
+        .bind(user_id)
+        .bind(bucket_id)
+        .bind(album_id)
+        .execute(executor)
+        .await?;
+
+    Ok(())
+}
+
+pub async fn remove_privacy_bucket_photo_album(pool: &DatabasePool, bucket_id: PrivacyBucketId, user_id: UserId, album_id: PhotoAlbumId) -> DatabaseResult<()> {
+    query("DELETE FROM PrivacyBucketPhotoAlbum WHERE UserId = ? AND BucketId = ? AND PhotoAlbumId = ?")
+        .bind(user_id)
+        .bind(bucket_id)
+        .bind(album_id)
+        .execute(pool.as_ref())
+        .await?;
+
+    Ok(())
+}
+
+pub async fn get_photo_album_privacy_buckets(pool: &DatabasePool, album_id: PhotoAlbumId, user_id: UserId) -> DatabaseResult<Vec<SimplePrivacyBucket>> {
+    let res = query("SELECT ID, Sort, Name, Emoji, Color FROM PrivacyBucketPhotoAlbum a JOIN PrivacyBucket p ON p.ID = a.BucketId WHERE a.PhotoAlbumId = ? AND a.UserId = ?")
+        .bind(album_id)
+        .bind(user_id)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+    Ok(res.into_iter().map(simple_bucket).collect())
+}
+
+pub async fn get_photo_album_privacy_entries(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<(PhotoAlbumId, PrivacyBucketId)>> {
+    let res = query("SELECT PhotoAlbumId, BucketId FROM PrivacyBucketPhotoAlbum WHERE UserId = ?")
         .bind(user_id)
         .fetch_all(pool.as_ref())
         .await?;

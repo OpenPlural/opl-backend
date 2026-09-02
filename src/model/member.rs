@@ -83,6 +83,8 @@ impl Member {
 pub struct ExtendedViewedMember {
     pub member: ViewedMember,
     pub folders: Vec<ViewedFolder>,
+    #[serde(rename = "hasGallery")]
+    pub has_gallery: bool,
 }
 
 #[derive(Debug, Deserialize)]

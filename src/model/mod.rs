@@ -18,6 +18,7 @@ pub mod import;
 pub mod admin;
 pub mod poll;
 pub mod analytics;
+pub mod gallery;
 
 #[derive(Debug, Deserialize)]
 pub struct PageQuery {

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::model::fields::{CustomField, CustomFieldDataId, CustomFieldDataValue, CustomFieldId};
 use crate::model::folder::{Folder, FolderId};
 use crate::model::front::FrontEntry;
+use crate::model::gallery::{PhotoAlbum, PhotoAlbumId};
 use crate::model::member::{Member, MemberId};
 use crate::model::poll::{Poll, PollAnswer, PollAnswerId, PollId};
 use crate::model::user::UserInfo;
@@ -34,6 +35,8 @@ pub struct SyncResponse {
     pub poll_ids: Vec<PollId>,
     #[serde(rename = "pollAnswerIds")]
     pub poll_answer_ids: Vec<PollAnswerId>,
+    #[serde(rename = "photoAlbumIds")]
+    pub photo_album_ids: Vec<PhotoAlbumId>,
     #[serde(rename = "updatedFolders")]
     pub updated_folders: Vec<Folder>,
     #[serde(rename = "updatedMembers")]
@@ -46,5 +49,7 @@ pub struct SyncResponse {
     pub updated_polls: Vec<Poll>,
     #[serde(rename = "updatedPollAnswers")]
     pub updated_poll_answers: Vec<PollAnswer>,
+    #[serde(rename = "updatedPhotoAlbums")]
+    pub updated_photo_albums: Vec<PhotoAlbum>,
     pub front: Vec<FrontEntry>,
 }
