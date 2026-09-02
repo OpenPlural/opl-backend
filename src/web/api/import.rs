@@ -6,6 +6,7 @@ use crate::database::to_web_error;
 use crate::middleware::get_token;
 use crate::model::fields::{CustomField, CustomFieldDataValue};
 use crate::model::folder::Folder;
+use crate::model::gallery::PhotoAlbum;
 use crate::model::import::Import;
 use crate::model::member::Member;
 use crate::model::poll::{Poll, PollAnswer};
@@ -182,6 +183,23 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
                             answer.validate().map_err(validation_error)?;
                             crate::database::poll::create_poll_answer(transaction.as_mut(), &answer).await.map_err(to_web_error)?;
                         }
+                    }
+                }
+            }
+        }
+
+        if let Some(gallery) = body.gallery {
+            if let Some(member_mapping) = &member_mapping {
+                for mut album in gallery {
+                    if body.truncate {
+                        album.truncate();
+                    }
+                    if let Some(member_id) = member_mapping.get(&album.member_id) {
+                        let mut actual_album: PhotoAlbum = album.into();
+                        actual_album.validate().map_err(validation_error)?;
+                        actual_album.user_id = token.user_id;
+                        actual_album.member_id = *member_id;
+                        crate::database::gallery::create_photo_album(transaction.as_mut(), &actual_album).await.map_err(to_web_error)?;
                     }
                 }
             }

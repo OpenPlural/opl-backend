@@ -16,6 +16,25 @@ pub async fn get_photo_album_ids(pool: &DatabasePool, user_id: UserId) -> Databa
     Ok(ids.into_iter().map(|row| row.get(0)).collect())
 }
 
+pub async fn get_photo_albums(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<PhotoAlbum>> {
+    let albums = query("SELECT ID, UserId, MemberId, Sort, Name, Description, PhotoUrls, UpdatedAt FROM PhotoAlbum WHERE UserId = ?")
+        .bind(user_id)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+    let len = albums.len();
+    let albums = albums.into_iter().try_fold(Vec::with_capacity(len), |mut acc, row| {
+        match album(row) {
+            Ok(poll) => {
+                acc.push(poll);
+                Ok(acc)
+            }
+            Err(err) => Err(err)
+        }
+    });
+    albums.map_err(|err| anyhow!(err))
+}
+
 pub async fn get_updated_photo_albums(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<PhotoAlbum>> {
     let updated = query("SELECT ID, UserId, MemberId, Sort, Name, Description, PhotoUrls, UpdatedAt FROM PhotoAlbum WHERE UserId = ? AND UpdatedAt > ?")
         .bind(user_id)

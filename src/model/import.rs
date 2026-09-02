@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use crate::model::folder::Folder;
+use crate::model::gallery::PhotoAlbum;
 use crate::model::member::Member;
 use crate::model::poll::{Poll, POLL_MAX_OPTIONS};
 
@@ -14,6 +15,7 @@ pub struct Import {
     pub folders: Option<Vec<ImportFolder>>,
     pub members: Option<Vec<ImportMember>>,
     pub polls: Option<Vec<ImportPoll>>,
+    pub gallery: Option<Vec<ImportPhotoAlbum>>,
     #[serde(skip_serializing)]
     pub truncate: bool,
 }
@@ -235,6 +237,42 @@ impl Into<Poll> for ImportPoll {
             allow_veto: self.allow_veto,
             open_until: self.open_until,
             custom_options: self.custom_options,
+            updated_at: Default::default(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ImportPhotoAlbum {
+    #[serde(rename = "memberId")]
+    pub member_id: String,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
+    pub sort: u16,
+    pub name: String,
+    pub description: Option<String>,
+    #[serde(rename = "photoUrls")]
+    pub photo_urls: Option<Vec<String>>,
+}
+
+impl ImportPhotoAlbum {
+    pub fn truncate(&mut self) {
+        self.name.truncate(self.name.floor_char_boundary(255));
+        if let Some(description) = &mut self.description {
+            description.truncate(description.floor_char_boundary(65535));
+        }
+    }
+}
+
+impl Into<PhotoAlbum> for ImportPhotoAlbum {
+    fn into(self) -> PhotoAlbum {
+        PhotoAlbum {
+            sort: self.sort,
+            name: self.name,
+            description: self.description,
+            photo_urls: self.photo_urls,
+            id: 0,
+            user_id: 0,
+            member_id: 0,
             updated_at: Default::default(),
         }
     }
