@@ -10,11 +10,17 @@ use crate::model::poll::{Poll, POLL_MAX_OPTIONS};
 
 #[derive(Deserialize, Serialize)]
 pub struct Import {
+    #[serde(default)]
     pub privacy: Option<Vec<ImportPrivacyBucket>>,
+    #[serde(default)]
     pub fields: Option<Vec<ImportCustomField>>,
+    #[serde(default)]
     pub folders: Option<Vec<ImportFolder>>,
+    #[serde(default)]
     pub members: Option<Vec<ImportMember>>,
+    #[serde(default)]
     pub polls: Option<Vec<ImportPoll>>,
+    #[serde(default)]
     pub gallery: Option<Vec<ImportPhotoAlbum>>,
     #[serde(skip_serializing)]
     pub truncate: bool,
@@ -101,6 +107,7 @@ pub struct ImportFolder {
     pub emoji: Option<String>,
     #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub color: u32,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub sort: u16,
     pub privacy: Vec<String>,
 }
@@ -145,6 +152,7 @@ pub struct ImportMember {
     pub color: u32,
     pub archived: bool,
     pub custom: bool,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub sort: u16,
     pub folders: Vec<String>,
     pub fields: HashMap<String, String>,
@@ -205,6 +213,7 @@ pub struct ImportPoll {
 pub struct ImportPollAnswer {
     #[serde(rename = "memberId")]
     pub member_id: String,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub answer: u8,
     pub comment: Option<String>,
 }
