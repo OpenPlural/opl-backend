@@ -34,6 +34,7 @@ pub async fn sync(req: HttpRequest, data: Data<AppState>, query: Query<SyncQuery
         let updated_field_values = crate::database::fields::get_updated_field_values(&data.pool, user.id, &last_sync_time).await.map_err(to_web_error)?;
         let updated_polls = crate::database::poll::get_updated_polls(&data.pool, user.id, &last_sync_time).await.map_err(to_web_error)?;
         let updated_poll_answers = crate::database::poll::get_updated_poll_answers(&data.pool, user.id, &last_sync_time).await.map_err(to_web_error)?;
+        let updated_photo_albums = crate::database::gallery::get_updated_photo_albums(&data.pool, user.id, &last_sync_time).await.map_err(to_web_error)?;
 
         if absolute {
             // send known
@@ -43,6 +44,7 @@ pub async fn sync(req: HttpRequest, data: Data<AppState>, query: Query<SyncQuery
             let field_value_ids = crate::database::fields::get_field_value_ids(&data.pool, token.user_id).await.map_err(to_web_error)?;
             let poll_ids = crate::database::poll::get_poll_ids(&data.pool, token.user_id).await.map_err(to_web_error)?;
             let poll_answer_ids = crate::database::poll::get_poll_answer_ids(&data.pool, token.user_id).await.map_err(to_web_error)?;
+            let photo_album_ids = crate::database::gallery::get_photo_album_ids(&data.pool, token.user_id).await.map_err(to_web_error)?;
 
             ok(SyncResponse {
                 time,
@@ -55,19 +57,21 @@ pub async fn sync(req: HttpRequest, data: Data<AppState>, query: Query<SyncQuery
                 field_value_ids,
                 poll_ids,
                 poll_answer_ids,
+                photo_album_ids,
                 updated_folders,
                 updated_members,
                 updated_fields,
                 updated_field_values,
                 updated_polls,
                 updated_poll_answers,
+                updated_photo_albums,
                 front,
             })
         } else {
             // send deletions
             let deletions = crate::database::deletion::get_deletions(&data.pool, token.user_id).await.map_err(to_web_error)?;
-            let (folder_ids, member_ids, field_ids, field_value_ids, poll_ids, poll_answer_ids) = deletions.into_iter()
-                .fold((vec![], vec![], vec![], vec![], vec![], vec![]), |mut acc, deletion| {
+            let (folder_ids, member_ids, field_ids, field_value_ids, poll_ids, poll_answer_ids, photo_album_ids) = deletions.into_iter()
+                .fold((vec![], vec![], vec![], vec![], vec![], vec![], vec![]), |mut acc, deletion| {
                     match deletion.resource_type {
                         DeletionResourceType::Folder => acc.0.push(deletion.resource_id),
                         DeletionResourceType::Member => acc.1.push(deletion.resource_id),
@@ -75,6 +79,7 @@ pub async fn sync(req: HttpRequest, data: Data<AppState>, query: Query<SyncQuery
                         DeletionResourceType::CustomFieldDataValue => acc.3.push(deletion.resource_id),
                         DeletionResourceType::Poll => acc.4.push(deletion.resource_id),
                         DeletionResourceType::PollAnswer => acc.5.push(deletion.resource_id),
+                        DeletionResourceType::PhotoAlbum => acc.6.push(deletion.resource_id),
                     }
                     acc
                 });
@@ -90,12 +95,14 @@ pub async fn sync(req: HttpRequest, data: Data<AppState>, query: Query<SyncQuery
                 field_value_ids,
                 poll_ids,
                 poll_answer_ids,
+                photo_album_ids,
                 updated_folders,
                 updated_members,
                 updated_fields,
                 updated_field_values,
                 updated_polls,
                 updated_poll_answers,
+                updated_photo_albums,
                 front,
             })
         }

@@ -7,6 +7,7 @@ use actix_web::{delete, get, patch, post, put, HttpRequest};
 use crate::error::WebError;
 use crate::model::fields::CustomFieldId;
 use crate::model::folder::FolderId;
+use crate::model::gallery::PhotoAlbumId;
 use crate::model::IdResponse;
 use crate::model::member::MemberId;
 use crate::model::privacy::{PrivacyBucket, PrivacyBucketId};
@@ -138,6 +139,24 @@ pub async fn add_privacy_bucket_custom_field(req: HttpRequest, data: Data<AppSta
     not_found()
 }
 
+#[put("/{bucketId}/gallery/{fieldId}")]
+pub async fn add_privacy_bucket_photo_album(req: HttpRequest, data: Data<AppState>, path: Path<(PrivacyBucketId, PhotoAlbumId)>) -> WebResult {
+    let token = get_token(&req).unwrap();
+    token.require_write()?;
+
+    let (bucket_id, album_id) = path.into_inner();
+    if let Some(bucket) = crate::database::privacy::get_simple_privacy_bucket(&data.pool, bucket_id, token.user_id).await.map_err(to_web_error)? {
+        if let Some(album_owner) = crate::database::gallery::get_photo_album_owner(&data.pool, album_id).await.map_err(to_web_error)? {
+            if album_owner != token.user_id {
+                return Err(WebError::ResourceNotOwned);
+            }
+            crate::database::privacy::add_privacy_bucket_photo_album(&*data.pool, bucket_id, token.user_id, album_id).await.map_err(to_web_error)?;
+            return ok(bucket);
+        }
+    }
+    not_found()
+}
+
 #[put("/{bucketId}/friend/{friendId}")]
 pub async fn add_privacy_bucket_friend(req: HttpRequest, data: Data<AppState>, path: Path<(PrivacyBucketId, UserId)>) -> WebResult {
     let token = get_token(&req).unwrap();
@@ -181,6 +200,16 @@ pub async fn remove_privacy_bucket_custom_field(req: HttpRequest, data: Data<App
 
     let (bucket_id, field_id) = path.into_inner();
     crate::database::privacy::remove_privacy_bucket_custom_field(&data.pool, bucket_id, token.user_id, field_id).await.map_err(to_web_error)?;
+    ok_none()
+}
+
+#[delete("/{bucketId}/gallery/{fieldId}")]
+pub async fn remove_privacy_bucket_photo_album(req: HttpRequest, data: Data<AppState>, path: Path<(PrivacyBucketId, PhotoAlbumId)>) -> WebResult {
+    let token = get_token(&req).unwrap();
+    token.require_write()?;
+
+    let (bucket_id, album_id) = path.into_inner();
+    crate::database::privacy::remove_privacy_bucket_photo_album(&data.pool, bucket_id, token.user_id, album_id).await.map_err(to_web_error)?;
     ok_none()
 }
 

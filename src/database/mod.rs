@@ -13,6 +13,7 @@ pub mod notification;
 pub mod admin;
 pub mod poll;
 pub mod analytics;
+pub mod gallery;
 
 use std::collections::HashMap;
 use std::hash::Hash;

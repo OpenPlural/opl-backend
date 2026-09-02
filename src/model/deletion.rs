@@ -15,4 +15,5 @@ pub enum DeletionResourceType {
     CustomFieldDataValue = 3,
     Poll = 4,
     PollAnswer = 5,
+    PhotoAlbum = 6,
 }
