@@ -1,7 +1,7 @@
 use crate::database::to_web_error;
 use crate::middleware::get_token;
 use crate::model::folder::FolderId;
-use crate::model::import::{Import, ImportCustomField, ImportFolder, ImportMember, ImportPoll, ImportPollAnswer, ImportPrivacyBucket};
+use crate::model::import::{Import, ImportCustomField, ImportFolder, ImportMember, ImportPhotoAlbum, ImportPoll, ImportPollAnswer, ImportPrivacyBucket};
 use crate::model::member::MemberId;
 use crate::web::{ok, WebResult};
 use crate::AppState;
@@ -64,7 +64,7 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
     let folders = folders.into_iter().map(|f| ImportFolder {
         id: f.id.to_string(),
         parent_id: f.parent_id.map(|id| id.to_string()),
-        name: f.name.to_string(),
+        name: f.name,
         description: f.description,
         emoji: f.emoji,
         color: f.color,
@@ -78,7 +78,7 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
     let custom_fields = custom_fields.into_iter().map(|f| ImportCustomField {
         id: f.id.to_string(),
         sort: f.sort,
-        name: f.name.to_string(),
+        name: f.name,
         data_type: f.data_type,
         privacy: custom_field_privacy.remove(&f.id).unwrap_or_default(),
     }).collect();
@@ -100,7 +100,7 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
     let members = crate::database::member::get_members(&data.pool, user_id, None).await.map_err(to_web_error)?;
     let members = members.into_iter().map(|m| ImportMember {
         id: m.id.to_string(),
-        name: m.name.to_string(),
+        name: m.name,
         pronouns: m.pronouns,
         avatar: m.avatar,
         description: m.description,
@@ -127,13 +127,22 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
 
     let polls = crate::database::poll::get_polls(&data.pool, user_id).await.map_err(to_web_error)?;
     let polls = polls.into_iter().map(|p| ImportPoll {
-        name: p.name.clone(),
-        description: p.description.clone(),
+        name: p.name,
+        description: p.description,
         allow_abstain: p.allow_abstain,
         allow_veto: p.allow_veto,
         open_until: p.open_until,
-        custom_options: p.custom_options.clone(),
+        custom_options: p.custom_options,
         answers: poll_answers.remove(&p.id).unwrap_or_default(),
+    }).collect();
+
+    let gallery = crate::database::gallery::get_photo_albums(&data.pool, user_id).await.map_err(to_web_error)?;
+    let gallery = gallery.into_iter().map(|a| ImportPhotoAlbum {
+        member_id: a.member_id.to_string(),
+        sort: a.sort,
+        name: a.name,
+        description: a.description,
+        photo_urls: a.photo_urls,
     }).collect();
 
     ok(Import {
@@ -142,6 +151,7 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
         folders: Some(folders),
         members: Some(members),
         polls: Some(polls),
+        gallery: Some(gallery),
         truncate: false,
     })
 }

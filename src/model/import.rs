@@ -4,16 +4,24 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use crate::model::folder::Folder;
+use crate::model::gallery::PhotoAlbum;
 use crate::model::member::Member;
 use crate::model::poll::{Poll, POLL_MAX_OPTIONS};
 
 #[derive(Deserialize, Serialize)]
 pub struct Import {
+    #[serde(default)]
     pub privacy: Option<Vec<ImportPrivacyBucket>>,
+    #[serde(default)]
     pub fields: Option<Vec<ImportCustomField>>,
+    #[serde(default)]
     pub folders: Option<Vec<ImportFolder>>,
+    #[serde(default)]
     pub members: Option<Vec<ImportMember>>,
+    #[serde(default)]
     pub polls: Option<Vec<ImportPoll>>,
+    #[serde(default)]
+    pub gallery: Option<Vec<ImportPhotoAlbum>>,
     #[serde(skip_serializing)]
     pub truncate: bool,
 }
@@ -99,6 +107,7 @@ pub struct ImportFolder {
     pub emoji: Option<String>,
     #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub color: u32,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub sort: u16,
     pub privacy: Vec<String>,
 }
@@ -143,6 +152,7 @@ pub struct ImportMember {
     pub color: u32,
     pub archived: bool,
     pub custom: bool,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub sort: u16,
     pub folders: Vec<String>,
     pub fields: HashMap<String, String>,
@@ -203,6 +213,7 @@ pub struct ImportPoll {
 pub struct ImportPollAnswer {
     #[serde(rename = "memberId")]
     pub member_id: String,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub answer: u8,
     pub comment: Option<String>,
 }
@@ -235,6 +246,42 @@ impl Into<Poll> for ImportPoll {
             allow_veto: self.allow_veto,
             open_until: self.open_until,
             custom_options: self.custom_options,
+            updated_at: Default::default(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ImportPhotoAlbum {
+    #[serde(rename = "memberId")]
+    pub member_id: String,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
+    pub sort: u16,
+    pub name: String,
+    pub description: Option<String>,
+    #[serde(rename = "photoUrls")]
+    pub photo_urls: Option<Vec<String>>,
+}
+
+impl ImportPhotoAlbum {
+    pub fn truncate(&mut self) {
+        self.name.truncate(self.name.floor_char_boundary(255));
+        if let Some(description) = &mut self.description {
+            description.truncate(description.floor_char_boundary(65535));
+        }
+    }
+}
+
+impl Into<PhotoAlbum> for ImportPhotoAlbum {
+    fn into(self) -> PhotoAlbum {
+        PhotoAlbum {
+            sort: self.sort,
+            name: self.name,
+            description: self.description,
+            photo_urls: self.photo_urls,
+            id: 0,
+            user_id: 0,
+            member_id: 0,
             updated_at: Default::default(),
         }
     }
