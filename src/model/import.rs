@@ -261,6 +261,7 @@ pub struct ImportPhotoAlbum {
     pub description: Option<String>,
     #[serde(rename = "photoUrls")]
     pub photo_urls: Option<Vec<String>>,
+    pub privacy: Vec<String>,
 }
 
 impl ImportPhotoAlbum {
