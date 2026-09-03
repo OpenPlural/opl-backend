@@ -136,6 +136,8 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
         answers: poll_answers.remove(&p.id).unwrap_or_default(),
     }).collect();
 
+    let gallery_privacy = crate::database::privacy::get_photo_album_privacy_entries(&data.pool, user_id).await.map_err(to_web_error)?;
+    let mut gallery_privacy = list_to_map(gallery_privacy);
     let gallery = crate::database::gallery::get_photo_albums(&data.pool, user_id).await.map_err(to_web_error)?;
     let gallery = gallery.into_iter().map(|a| ImportPhotoAlbum {
         member_id: a.member_id.to_string(),
@@ -143,6 +145,7 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
         name: a.name,
         description: a.description,
         photo_urls: a.photo_urls,
+        privacy: gallery_privacy.remove(&a.id).unwrap_or_default(),
     }).collect();
 
     ok(Import {

@@ -195,11 +195,20 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
                         album.truncate();
                     }
                     if let Some(member_id) = member_mapping.get(&album.member_id) {
+                        let privacy = album.privacy.clone();
                         let mut actual_album: PhotoAlbum = album.into();
                         actual_album.validate().map_err(validation_error)?;
                         actual_album.user_id = token.user_id;
                         actual_album.member_id = *member_id;
-                        crate::database::gallery::create_photo_album(transaction.as_mut(), &actual_album).await.map_err(to_web_error)?;
+                        let album_id = crate::database::gallery::create_photo_album(transaction.as_mut(), &actual_album).await.map_err(to_web_error)?;
+
+                        if let Some(privacy_mapping) = &privacy_mapping {
+                            for bucket in privacy {
+                                if let Some(bucket_id) = privacy_mapping.get(&bucket) {
+                                    crate::database::privacy::add_privacy_bucket_photo_album(transaction.as_mut(), *bucket_id, token.user_id, album_id).await.map_err(to_web_error)?;
+                                }
+                            }
+                        }
                     }
                 }
             }
