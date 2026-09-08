@@ -70,6 +70,12 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
                 friend_code,
                 user,
             }, token));
+        } else {
+            query("UPDATE User SET WrongPasswordEntries=WrongPasswordEntries+1, AccountDisabled=IF(WrongPasswordEntries >= 10, TRUE, AccountDisabled) WHERE ID=?")
+                .bind(user_id)
+                .execute(pool.as_ref())
+                .await
+                .map_err(|err| to_web_error(anyhow!(err)))?;
         }
     }
     Err(WebError::InvalidCredentials)
