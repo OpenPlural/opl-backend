@@ -5,7 +5,7 @@ use crate::model::session::{SessionId, Session};
 use crate::model::user::UserId;
 
 pub async fn check_session(pool: &DatabasePool, token: &str) -> DatabaseResult<Option<RequestToken>> {
-    let session = query("SELECT ID, UserId FROM Session WHERE Token = ?")
+    let session = query("SELECT s.ID, s.UserId FROM Session s JOIN User u ON u.ID = s.UserId WHERE s.Token = ? AND u.AccountDisabled = FALSE")
         .bind(token)
         .fetch_optional(pool.as_ref())
         .await?;
