@@ -299,6 +299,14 @@ pub async fn clear_expired_password_reset_tokens(pool: &DatabasePool) -> Databas
     Ok(())
 }
 
+pub async fn decrease_wrong_password_entries_counter(pool: &DatabasePool) -> DatabaseResult<()> {
+    query("UPDATE User SET WrongPasswordEntries = WrongPasswordEntries - 1 WHERE WrongPasswordEntries > 0")
+        .execute(pool.as_ref())
+        .await?;
+
+    Ok(())
+}
+
 fn user_info(row: MySqlRow, email: Option<String>) -> UserInfo {
     let user_id = row.get("ID");
     let user_name = row.get("Name");

@@ -84,6 +84,9 @@ async fn main() -> std::io::Result<()> {
             if let Err(err) = database::user::clear_expired_password_reset_tokens(&db_pool).await {
                 eprintln!("Failed to clear expired password reset tokens: {:?}", err);
             }
+            if let Err(err) = database::user::decrease_wrong_password_entries_counter(&db_pool).await {
+                eprintln!("Failed to decrease wrong password entries counter: {:?}", err);
+            }
         }
     });
 
