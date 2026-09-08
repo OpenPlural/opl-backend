@@ -1,4 +1,4 @@
-use crate::database::{DatabaseExecutor, DatabasePool, DatabaseResult};
+use crate::database::{assert_sql_safe, DatabaseExecutor, DatabasePool, DatabaseResult};
 use crate::model::folder::FolderId;
 use crate::model::member::{Member, MemberId};
 use crate::model::user::UserId;
@@ -29,7 +29,7 @@ pub async fn get_updated_members(pool: &DatabasePool, user_id: UserId, newer_tha
     let folders = {
         let placeholders = updated.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
         let sql = format!("SELECT MemberId, FolderId FROM MemberFolder WHERE MemberId IN ({placeholders}) AND UserId = ?");
-        let mut query = query(sql.as_str());
+        let mut query = query(assert_sql_safe(sql));
         for member in &updated {
             let id: MemberId = member.get("ID");
             query = query.bind(id);
@@ -92,7 +92,7 @@ WHERE MemberId IN ({placeholders}) AND UserId = ? AND EXISTS (
         } else {
             format!("SELECT MemberId, FolderId FROM MemberFolder WHERE MemberId IN ({placeholders}) AND UserId = ?")
         };
-        let mut query = query(sql.as_str());
+        let mut query = query(assert_sql_safe(sql));
         for member in &members {
             let id: MemberId = member.get("ID");
             query = query.bind(id);

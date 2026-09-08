@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use crate::database::{DatabaseExecutor, DatabasePool, DatabaseResult};
+use crate::database::{assert_sql_safe, DatabaseExecutor, DatabasePool, DatabaseResult};
 use crate::model::folder::{Folder, FolderId};
 use crate::model::user::UserId;
 use sqlx::mysql::MySqlRow;
@@ -84,7 +84,7 @@ pub async fn get_folders_by_ids(pool: &DatabasePool, folder_ids: &Vec<FolderId>,
     }
     let placeholders = folder_ids.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
     let sql = format!("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE ID IN ({placeholders}) AND UserId = ?");
-    let mut query = query(sql.as_str());
+    let mut query = query(assert_sql_safe(sql));
     for id in folder_ids {
         query = query.bind(id);
     }

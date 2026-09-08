@@ -1,4 +1,4 @@
-use crate::database::{to_web_error, DatabasePool, DatabaseResult};
+use crate::database::{assert_sql_safe, to_web_error, DatabasePool, DatabaseResult};
 use crate::model::auth::AccountInfo;
 use crate::model::user::{UserId, UserInfo};
 use crate::security::{hash, random_string, sha256, verify, SESSION_TOKEN_LENGTH};
@@ -264,7 +264,7 @@ pub async fn get_users_by_ids(pool: &DatabasePool, user_ids: &[UserId]) -> Datab
     for user_id in user_ids {
         args.add(*user_id).map_err(|e| anyhow!("{:?}", e))?;
     }
-    let statement = pool.prepare(&sql).await?;
+    let statement = pool.prepare(assert_sql_safe(sql)).await?;
     let users = statement.query_with(args).fetch_all(pool.as_ref()).await?;
 
     Ok(users.into_iter().map(|user| user_info(user, None)).collect())
