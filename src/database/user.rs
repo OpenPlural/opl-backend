@@ -70,6 +70,12 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
                 friend_code,
                 user,
             }, token));
+        } else {
+            query("UPDATE User SET WrongPasswordEntries=WrongPasswordEntries+1, AccountDisabled=IF(WrongPasswordEntries >= 10, TRUE, AccountDisabled) WHERE ID=?")
+                .bind(user_id)
+                .execute(pool.as_ref())
+                .await
+                .map_err(|err| to_web_error(anyhow!(err)))?;
         }
     }
     Err(WebError::InvalidCredentials)
@@ -287,6 +293,14 @@ pub async fn get_friend_code(pool: &DatabasePool, user_id: UserId) -> DatabaseRe
 
 pub async fn clear_expired_password_reset_tokens(pool: &DatabasePool) -> DatabaseResult<()> {
     query("UPDATE User SET PasswordResetToken = NULL, PasswordResetTokenExpires = NULL WHERE PasswordResetToken IS NOT NULL AND PasswordResetTokenExpires IS NOT NULL AND PasswordResetTokenExpires < CURRENT_TIMESTAMP()")
+        .execute(pool.as_ref())
+        .await?;
+
+    Ok(())
+}
+
+pub async fn decrease_wrong_password_entries_counter(pool: &DatabasePool) -> DatabaseResult<()> {
+    query("UPDATE User SET WrongPasswordEntries = WrongPasswordEntries - 1 WHERE WrongPasswordEntries > 0")
         .execute(pool.as_ref())
         .await?;
 
