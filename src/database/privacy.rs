@@ -1,4 +1,4 @@
-use crate::database::{DatabaseExecutor, DatabasePool, DatabaseResult};
+use crate::database::{assert_sql_safe, DatabaseExecutor, DatabasePool, DatabaseResult};
 use crate::model::privacy::{PrivacyBucket, PrivacyBucketId, SimplePrivacyBucket};
 use crate::model::user::UserId;
 use sqlx::mysql::MySqlRow;
@@ -19,7 +19,7 @@ pub async fn get_privacy_buckets(pool: &DatabasePool, user_id: UserId) -> Databa
         let folders = {
             let placeholders = buckets.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
             let sql = format!("SELECT BucketId, FolderId FROM PrivacyBucketFolder WHERE BucketId IN ({placeholders})");
-            let mut query = query(sql.as_str());
+            let mut query = query(assert_sql_safe(sql));
             for bucket in &buckets {
                 query = query.bind(bucket.id);
             }
@@ -30,7 +30,7 @@ pub async fn get_privacy_buckets(pool: &DatabasePool, user_id: UserId) -> Databa
         let members = {
             let placeholders = buckets.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
             let sql = format!("SELECT BucketId, MemberId FROM PrivacyBucketMember WHERE BucketId IN ({placeholders})");
-            let mut query = query(sql.as_str());
+            let mut query = query(assert_sql_safe(sql));
             for bucket in &buckets {
                 query = query.bind(bucket.id);
             }
@@ -41,7 +41,7 @@ pub async fn get_privacy_buckets(pool: &DatabasePool, user_id: UserId) -> Databa
         let friends = {
             let placeholders = buckets.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
             let sql = format!("SELECT BucketId, FriendId FROM PrivacyBucketFriend WHERE BucketId IN ({placeholders})");
-            let mut query = query(sql.as_str());
+            let mut query = query(assert_sql_safe(sql));
             for bucket in &buckets {
                 query = query.bind(bucket.id);
             }
@@ -145,7 +145,7 @@ pub async fn edit_privacy_bucket(pool: &DatabasePool, bucket: &PrivacyBucket) ->
 pub async fn reorder_privacy_buckets(pool: &DatabasePool, ids: Vec<PrivacyBucketId>, user_id: UserId) -> DatabaseResult<()> {
     let placeholders = ids.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
     let sql = format!("UPDATE PrivacyBucket SET Sort=field(ID, {placeholders}) WHERE ID IN ({placeholders}) AND UserId = ?");
-    let mut query = query(sql.as_str());
+    let mut query = query(assert_sql_safe(sql));
     for id in &ids {
         query = query.bind(id);
     }

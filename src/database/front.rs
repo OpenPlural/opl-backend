@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use sqlx::Arguments;
 use anyhow::anyhow;
-use crate::database::{list_to_map, DatabasePool, DatabaseResult};
+use crate::database::{assert_sql_safe, list_to_map, DatabasePool, DatabaseResult};
 use crate::model::front::{FrontEntry, FrontEntryId};
 use crate::model::user::{UserId, UserInfo};
 use chrono::{DateTime, Utc};
@@ -31,7 +31,7 @@ SELECT DISTINCT f.UserId, m.Name FROM Front f JOIN Member m ON m.ID = f.MemberId
     for user in &users {
         args.add(user.id).map_err(|e| anyhow!("{:?}", e))?;
     }
-    let statement = pool.prepare(&sql).await?;
+    let statement = pool.prepare(assert_sql_safe(sql)).await?;
     let front = statement.query_with(args).bind(viewer).fetch_all(pool.as_ref()).await?;
 
     let map: HashMap<UserId, Vec<String>> = list_to_map(&front, "UserId", "Name", users.len());
@@ -70,7 +70,7 @@ WHERE f.UserId = ? AND f.EndedAt IS NULL AND pf.FriendId IN ({placeholders})
     for (viewer, _) in &viewers {
         args.add(viewer).map_err(|e| anyhow!("{:?}", e))?;
     }
-    let statement = pool.prepare(&sql).await?;
+    let statement = pool.prepare(assert_sql_safe(sql)).await?;
     let front = statement.query_with(args).fetch_all(pool.as_ref()).await?;
 
     let map: HashMap<UserId, Vec<String>> = list_to_map(&front, "FriendId", "Name", viewers.len());
