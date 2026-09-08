@@ -1,6 +1,5 @@
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use argon2::password_hash::{Error, SaltString};
-use argon2::password_hash::rand_core::OsRng;
+use argon2::password_hash::Error;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD_NO_PAD;
 use rand::{rng, RngExt};
@@ -30,8 +29,7 @@ pub fn random_string(length: usize) -> String {
 }
 
 pub async fn hash(input: &str) -> Result<String, Error> {
-    let salt = SaltString::generate(&mut OsRng);
-    let hash = get_hash_algorithm().await.hash_password(input.as_bytes(), &salt)?;
+    let hash = get_hash_algorithm().await.hash_password(input.as_bytes())?;
     let hash = hash.to_string();
     Ok(hash)
 }
