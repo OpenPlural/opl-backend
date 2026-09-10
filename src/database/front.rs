@@ -144,6 +144,16 @@ WHERE UserId = ? AND EndedAt IS NULL AND EXISTS (
     Ok(entries.into_iter().map(|row| front_entry(row, user_id, None)).collect())
 }
 
+pub async fn get_updated_ended_front_entry_ids(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<FrontEntryId>> {
+    let updated = query("SELECT ID FROM Folder WHERE UserId = ? AND UpdatedAt > ?")
+        .bind(user_id)
+        .bind(newer_than)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+    Ok(updated.into_iter().map(|row| row.get("ID")).collect())
+}
+
 pub async fn get_front_entry_by_id(pool: &DatabasePool, entry_id: FrontEntryId, user_id: UserId, friend_viewer: Option<UserId>) -> DatabaseResult<Option<FrontEntry>> {
     let entry = if let Some(friend_viewer) = friend_viewer {
         query(r#"

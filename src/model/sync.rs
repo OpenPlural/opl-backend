@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use crate::model::fields::{CustomField, CustomFieldDataId, CustomFieldDataValue, CustomFieldId};
 use crate::model::folder::{Folder, FolderId};
-use crate::model::front::FrontEntry;
+use crate::model::front::{FrontEntry, FrontEntryId};
 use crate::model::gallery::{PhotoAlbum, PhotoAlbumId};
 use crate::model::member::{Member, MemberId};
 use crate::model::poll::{Poll, PollAnswer, PollAnswerId, PollId};
@@ -52,4 +52,6 @@ pub struct SyncResponse {
     #[serde(rename = "updatedPhotoAlbums")]
     pub updated_photo_albums: Vec<PhotoAlbum>,
     pub front: Vec<FrontEntry>,
+    #[serde(rename = "endedFront")]
+    pub ended_front: Vec<FrontEntryId>,
 }

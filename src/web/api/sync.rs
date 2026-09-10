@@ -20,13 +20,15 @@ pub async fn sync(req: HttpRequest, data: Data<AppState>, query: Query<SyncQuery
 
         let last_sync_time = query.since;
         let time = crate::database::time::get_database_time(&data.pool).await.map_err(to_web_error)?;
-        let front = crate::database::front::get_current_front_entries(&data.pool, token.user_id, None).await.map_err(to_web_error)?;
         let absolute = if query.absolute {
             true
         } else {
             let dur = time - last_sync_time;
             dur.num_days() >= 7
         };
+
+        let front = crate::database::front::get_current_front_entries(&data.pool, token.user_id, None).await.map_err(to_web_error)?;
+        let ended_front = crate::database::front::get_updated_ended_front_entry_ids(&data.pool, token.user_id, &last_sync_time).await.map_err(to_web_error)?;
 
         let updated_folders = crate::database::folder::get_updated_folders(&data.pool, token.user_id, &last_sync_time).await.map_err(to_web_error)?;
         let updated_members = crate::database::member::get_updated_members(&data.pool, token.user_id, &last_sync_time).await.map_err(to_web_error)?;
@@ -66,6 +68,7 @@ pub async fn sync(req: HttpRequest, data: Data<AppState>, query: Query<SyncQuery
                 updated_poll_answers,
                 updated_photo_albums,
                 front,
+                ended_front,
             })
         } else {
             // send deletions
@@ -104,6 +107,7 @@ pub async fn sync(req: HttpRequest, data: Data<AppState>, query: Query<SyncQuery
                 updated_poll_answers,
                 updated_photo_albums,
                 front,
+                ended_front,
             })
         }
     } else {
