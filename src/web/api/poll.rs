@@ -2,7 +2,6 @@ use actix_web::{delete, get, patch, put, HttpRequest};
 use actix_web::web::{Data, Json, Path};
 use crate::AppState;
 use crate::database::to_web_error;
-use crate::error::WebError;
 use crate::middleware::get_token;
 use crate::model::IdResponse;
 use crate::model::poll::{Poll, PollAnswer, PollAnswerId, PollId};
