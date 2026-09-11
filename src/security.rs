@@ -1,7 +1,7 @@
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use argon2::password_hash::Error;
 use base64::Engine;
-use base64::prelude::BASE64_STANDARD_NO_PAD;
+use base64::prelude::{BASE64_STANDARD_NO_PAD, BASE64_URL_SAFE_NO_PAD};
 use rand::{rng, RngExt};
 use rand::distr::Alphanumeric;
 use sha2::{Digest, Sha256, Sha512};
@@ -50,4 +50,10 @@ pub fn sha512(input: &str) -> String {
     let full_input = format!("{}{}{}", SHA512_PEPPER, input, SHA512_PEPPER);
     let hash = Sha512::digest(full_input.as_bytes());
     BASE64_STANDARD_NO_PAD.encode(hash)
+}
+
+pub fn sha512_url(input: &str) -> String {
+    let full_input = format!("{}{}{}", SHA512_PEPPER, input, SHA512_PEPPER);
+    let hash = Sha512::digest(full_input.as_bytes());
+    BASE64_URL_SAFE_NO_PAD.encode(hash)
 }

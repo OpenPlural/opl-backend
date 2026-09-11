@@ -13,3 +13,4 @@ pub mod import;
 pub mod export;
 pub mod poll;
 pub mod analytics;
+pub mod cdn;

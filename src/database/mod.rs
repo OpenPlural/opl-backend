@@ -14,6 +14,7 @@ pub mod admin;
 pub mod poll;
 pub mod analytics;
 pub mod gallery;
+pub mod cdn;
 
 use std::collections::HashMap;
 use std::hash::Hash;
