@@ -106,19 +106,6 @@ pub async fn edit_poll(pool: &DatabasePool, poll: &Poll) -> DatabaseResult<()> {
     Ok(())
 }
 
-pub async fn is_custom_poll(pool: &DatabasePool, poll_id: PollId, user_id: UserId) -> DatabaseResult<Option<bool>> {
-    let poll = query("SELECT CustomOptions FROM Poll WHERE ID = ? AND UserId = ?")
-        .bind(poll_id)
-        .bind(user_id)
-        .fetch_optional(pool.as_ref())
-        .await?;
-    
-    Ok(poll.map(|row| {
-        let opts: Option<String> = row.get("CustomOptions");
-        opts.is_some()
-    }))
-}
-
 pub async fn get_poll_answer_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<PollId>> {
     let ids = query("SELECT ID FROM PollAnswer WHERE UserId = ?")
         .bind(user_id)

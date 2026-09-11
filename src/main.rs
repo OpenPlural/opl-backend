@@ -24,7 +24,7 @@ use crate::web::api::user::{change_friend_code, edit_user, get_self_user, get_us
 use crate::web::auth::{change_password, delete_account, login, register, reset_password};
 use crate::web::version::{app_update, version};
 use actix_web::dev::Service;
-use actix_web::web::{scope, Data};
+use actix_web::web::{scope, Data, PayloadConfig};
 use actix_web::{App, HttpServer};
 use sqlx::mysql::MySqlConnectOptions;
 use sqlx::{migrate, MySqlPool};
@@ -41,6 +41,7 @@ use crate::web::admin::stats::get_statistics;
 use crate::web::admin::user::{disable_user, enable_user, export_user, get_all_users, get_user_by_id};
 use crate::web::api::analytics::get_analytics;
 use crate::web::api::apikey::{create_api_key, delete_api_key, get_api_keys};
+use crate::web::api::cdn::{get_avatar, upload_avatar};
 use crate::web::api::export::export;
 use crate::web::api::fields::{clear_field_value, create_field, create_field_value, delete_field, edit_field, get_field, get_field_privacy, get_field_value, get_field_values, get_fields, get_specific_field_values, update_field_value};
 use crate::web::api::import::import;
@@ -87,6 +88,9 @@ async fn main() -> std::io::Result<()> {
             if let Err(err) = database::user::decrease_wrong_password_entries_counter(&db_pool).await {
                 eprintln!("Failed to decrease wrong password entries counter: {:?}", err);
             }
+            if let Err(err) = database::cdn::delete_unused_cdn_files(&db_pool).await {
+                eprintln!("Failed to delete unused cdn files: {:?}", err);
+            }
         }
     });
 
@@ -116,6 +120,12 @@ async fn main() -> std::io::Result<()> {
                             .service(get_api_keys)
                             .service(create_api_key)
                             .service(delete_api_key)
+                    )
+                    .service(
+                        scope("/cdn")
+                            .app_data(PayloadConfig::new(2097152))
+                            .service(upload_avatar)
+                            .service(get_avatar)
                     )
                     .service(
                         scope("/export")
