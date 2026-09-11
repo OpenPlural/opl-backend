@@ -145,7 +145,7 @@ WHERE UserId = ? AND EndedAt IS NULL AND EXISTS (
 }
 
 pub async fn get_updated_ended_front_entry_ids(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<FrontEntryId>> {
-    let updated = query("SELECT ID FROM Folder WHERE UserId = ? AND UpdatedAt > ?")
+    let updated = query("SELECT ID FROM Front WHERE UserId = ? AND UpdatedAt > ? AND EndedAt IS NOT NULL")
         .bind(user_id)
         .bind(newer_than)
         .fetch_all(pool.as_ref())
