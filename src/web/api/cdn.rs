@@ -1,5 +1,6 @@
 use actix_web::{get, post, HttpRequest, HttpResponse};
 use actix_web::web::{Bytes, Path, Query};
+use chrono::Utc;
 use uuid::Uuid;
 use crate::database::cdn::{get_image, has_image, store_image};
 use crate::database::to_web_error;
@@ -37,6 +38,11 @@ pub async fn get_avatar(req: HttpRequest, path: Path<(String, String)>, query: Q
 
     let (id, mime_type) = path.into_inner();
     let id = Uuid::parse_str(&id).map_err(|err| WebError::InvalidPayload(format!("Invalid uuid: {err}")))?;
+
+    let week = Utc::now().timestamp() / 604800;
+    if (week - query.week).unsigned_abs() > 1 {
+        return Ok(HttpResponse::Forbidden().finish());
+    }
 
     let access = get_access_token(&id);
     if access != query.access {

@@ -8,5 +8,6 @@ pub struct UploadResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct AvatarAccessQuery {
-    pub access: String
+    pub access: String,
+    pub week: i64,
 }
