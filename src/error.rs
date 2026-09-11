@@ -59,9 +59,6 @@ pub enum WebError {
 
     #[error("This member is already fronting")]
     AlreadyFronting,
-
-    #[error("You can't change the poll type (from custom to yes/no or vice-versa)")]
-    CantChangePollType,
     
     #[error("You do not own this resource")]
     ResourceNotOwned,
@@ -97,8 +94,6 @@ impl ResponseError for WebError {
             WebError::CantFriendSelf => StatusCode::FORBIDDEN,
 
             WebError::AlreadyFronting => StatusCode::CONFLICT,
-
-            WebError::CantChangePollType => StatusCode::FORBIDDEN,
             
             WebError::ResourceNotOwned => StatusCode::FORBIDDEN,
         }

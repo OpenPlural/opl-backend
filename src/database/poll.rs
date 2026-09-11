@@ -92,12 +92,9 @@ pub async fn delete_poll(pool: &DatabasePool, poll_id: PollId, user_id: UserId) 
 }
 
 pub async fn edit_poll(pool: &DatabasePool, poll: &Poll) -> DatabaseResult<()> {
-    let custom_options = poll_options(poll).map_err(|err| anyhow!(err))?;
-
-    query("UPDATE Poll SET Name = ?, Description = ?, CustomOptions = ?, AllowAbstain = ?, AllowVeto = ?, OpenUntil = ? WHERE ID = ? AND UserId = ?")
+    query("UPDATE Poll SET Name = ?, Description = ?, AllowAbstain = ?, AllowVeto = ?, OpenUntil = ? WHERE ID = ? AND UserId = ?")
         .bind(&poll.name)
         .bind(&poll.description)
-        .bind(custom_options)
         .bind(poll.allow_abstain)
         .bind(poll.allow_veto)
         .bind(&poll.open_until)
