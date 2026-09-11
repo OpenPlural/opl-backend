@@ -62,20 +62,9 @@ pub async fn edit_poll(req: HttpRequest, data: Data<AppState>, path: Path<PollId
     let mut body = body.into_inner();
     body.validate().map_err(validation_error)?;
 
-
     let poll_id = path.into_inner();
     body.id = poll_id;
     body.user_id = token.user_id;
-
-    let old_custom = crate::database::poll::is_custom_poll(&data.pool, poll_id, token.user_id).await.map_err(to_web_error)?;
-    if let Some(old_custom) = old_custom {
-        let new_custom = body.custom_options.is_some();
-        if old_custom != new_custom {
-            return Err(WebError::CantChangePollType);
-        }
-    } else {
-        return not_found();
-    }
 
     crate::database::poll::edit_poll(&data.pool, &body).await.map_err(to_web_error)?;
     ok_none()
