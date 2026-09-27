@@ -16,7 +16,7 @@ pub async fn get_member_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseRes
 }
 
 pub async fn get_updated_members(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<Member>> {
-    let updated = query("SELECT ID, UserId, Sort, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom FROM Member WHERE UserId = ? AND UpdatedAt > ?")
+    let updated = query("SELECT ID, UserId, Sort, Name, Pronouns, AvatarUrl, Description, Color, PrivacyPreview, CreatedAt, UpdatedAt, Archived, Custom FROM Member WHERE UserId = ? AND UpdatedAt > ?")
         .bind(user_id)
         .bind(newer_than)
         .fetch_all(pool.as_ref())
@@ -67,7 +67,7 @@ WHERE UserId = ? AND EXISTS (
             .fetch_all(pool.as_ref())
             .await?
     } else {
-        query("SELECT UserId, Sort, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom, ID FROM Member WHERE UserId = ?")
+        query("SELECT UserId, Sort, Name, Pronouns, AvatarUrl, Description, Color, PrivacyPreview, CreatedAt, UpdatedAt, Archived, Custom, ID FROM Member WHERE UserId = ?")
             .bind(user_id)
             .fetch_all(pool.as_ref())
             .await?
@@ -136,7 +136,7 @@ WHERE ID = ? AND UserId = ? AND EXISTS (
             .fetch_optional(pool.as_ref())
             .await?
     } else {
-        query("SELECT UserId, Sort, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom FROM Member WHERE ID = ? AND UserId = ?")
+        query("SELECT UserId, Sort, Name, Pronouns, AvatarUrl, Description, Color, PrivacyPreview, CreatedAt, UpdatedAt, Archived, Custom FROM Member WHERE ID = ? AND UserId = ?")
             .bind(member_id)
             .bind(user_id)
             .fetch_optional(pool.as_ref())
@@ -269,6 +269,7 @@ fn member(row: MySqlRow, id: MemberId, folders: Vec<FolderId>) -> Member {
     let avatar = row.get("AvatarUrl");
     let description = row.get("Description");
     let color = row.get("Color");
+    let privacy_preview = row.try_get("PrivacyPreview").unwrap_or_default();
     let created_at = row.get("CreatedAt");
     let updated_at = row.get("UpdatedAt");
     let archived = row.get("Archived");
@@ -283,6 +284,7 @@ fn member(row: MySqlRow, id: MemberId, folders: Vec<FolderId>) -> Member {
         avatar,
         description,
         color,
+        privacy_preview,
         archived,
         custom,
         created_at,

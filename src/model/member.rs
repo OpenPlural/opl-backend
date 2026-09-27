@@ -19,6 +19,8 @@ pub struct Member {
     pub description: Option<String>,
     #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub color: u32,
+    #[serde(rename = "privacyPreview", skip_deserializing)]
+    pub privacy_preview: Option<String>,
     #[serde(default)]
     pub archived: bool,
     #[serde(default)]

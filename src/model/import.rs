@@ -187,6 +187,7 @@ impl Into<Member> for ImportMember {
             sort: self.sort,
             id: 0,
             user_id: 0,
+            privacy_preview: None,
             folders: vec![],
             created_at: Default::default(),
             updated_at: Default::default(),
