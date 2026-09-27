@@ -1,4 +1,4 @@
-use crate::database::friend::get_friend_ids;
+use crate::database::friend::get_previewed_friends;
 use crate::database::to_web_error;
 use crate::error::WebError;
 use crate::middleware::get_token;
@@ -10,14 +10,12 @@ use actix_web::web::{Data, Json, Path};
 use actix_web::{delete, get, patch, post, put, HttpRequest};
 use uuid::Uuid;
 use crate::database::front::fill_front_text;
-use crate::database::user::get_users_by_ids;
 
 #[get("/")]
 pub async fn get_friends(req: HttpRequest, data: Data<AppState>) -> WebResult {
     let token = get_token(&req).unwrap();
 
-    let friends = get_friend_ids(&data.pool, token.user_id).await.map_err(to_web_error)?;
-    let friends = get_users_by_ids(&data.pool, &friends).await.map_err(to_web_error)?;
+    let friends = get_previewed_friends(&data.pool, token.user_id).await.map_err(to_web_error)?;
     let friends = fill_front_text(&data.pool, token.user_id, friends).await.map_err(to_web_error)?;
     ok(friends)
 }

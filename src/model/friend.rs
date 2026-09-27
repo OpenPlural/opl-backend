@@ -35,4 +35,6 @@ pub struct Friend {
     pub user: UserInfo,
     #[serde(rename = "frontText")]
     pub front_text: Option<String>,
+    #[serde(rename = "privacyPreview")]
+    pub privacy_preview: Option<String>,
 }

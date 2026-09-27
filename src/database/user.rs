@@ -1,11 +1,11 @@
-use crate::database::{assert_sql_safe, to_web_error, DatabasePool, DatabaseResult};
+use crate::database::{to_web_error, DatabasePool, DatabaseResult};
 use crate::model::auth::AccountInfo;
 use crate::model::user::{UserId, UserInfo};
 use crate::security::{hash, random_string, sha256, verify, SESSION_TOKEN_LENGTH};
 use anyhow::anyhow;
 use chrono::{DateTime, Utc};
-use sqlx::mysql::{MySqlArguments, MySqlRow};
-use sqlx::{query, Arguments, Executor, Row, Statement};
+use sqlx::mysql::MySqlRow;
+use sqlx::{query, Row};
 use uuid::Uuid;
 use crate::error::WebError;
 
@@ -252,24 +252,6 @@ pub async fn get_username(pool: &DatabasePool, user_id: UserId) -> DatabaseResul
     Ok(username.map(|row| row.get("Name")))
 }
 
-pub async fn get_users_by_ids(pool: &DatabasePool, user_ids: &[UserId]) -> DatabaseResult<Vec<UserInfo>> {
-    if user_ids.is_empty() {
-        return Ok(vec![]);
-    }
-
-    let placeholders = user_ids.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
-    let sql = format!("SELECT ID, Name, AvatarUrl, Description, Color, System FROM User WHERE ID IN ({placeholders})");
-
-    let mut args = MySqlArguments::default();
-    for user_id in user_ids {
-        args.add(*user_id).map_err(|e| anyhow!("{:?}", e))?;
-    }
-    let statement = pool.prepare(assert_sql_safe(sql)).await?;
-    let users = statement.query_with(args).fetch_all(pool.as_ref()).await?;
-
-    Ok(users.into_iter().map(|user| user_info(user, None)).collect())
-}
-
 pub async fn change_friend_code(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<()> {
     query("UPDATE User SET FriendCode = RANDOM_BYTES(16) WHERE ID=?")
         .bind(user_id)
@@ -307,7 +289,7 @@ pub async fn decrease_wrong_password_entries_counter(pool: &DatabasePool) -> Dat
     Ok(())
 }
 
-fn user_info(row: MySqlRow, email: Option<String>) -> UserInfo {
+pub(in crate::database) fn user_info(row: MySqlRow, email: Option<String>) -> UserInfo {
     let user_id = row.get("ID");
     let user_name = row.get("Name");
     let avatar_url = row.get("AvatarUrl");

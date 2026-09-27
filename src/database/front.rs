@@ -12,7 +12,7 @@ use crate::model::member::MemberId;
 
 const MAX_FRONT_TEXT_LENGTH: usize = 127;
 
-pub async fn fill_front_text(pool: &DatabasePool, viewer: UserId, users: Vec<UserInfo>) -> DatabaseResult<Vec<Friend>> {
+pub async fn fill_front_text(pool: &DatabasePool, viewer: UserId, users: Vec<(UserInfo, Option<String>)>) -> DatabaseResult<Vec<Friend>> {
     if users.is_empty() {
         return Ok(vec![]);
     }
@@ -28,14 +28,14 @@ SELECT DISTINCT f.UserId, m.Name FROM Front f JOIN Member m ON m.ID = f.MemberId
 "#);
 
     let mut args = MySqlArguments::default();
-    for user in &users {
+    for (user, _) in &users {
         args.add(user.id).map_err(|e| anyhow!("{:?}", e))?;
     }
     let statement = pool.prepare(assert_sql_safe(sql)).await?;
     let front = statement.query_with(args).bind(viewer).fetch_all(pool.as_ref()).await?;
 
     let map: HashMap<UserId, Vec<String>> = list_to_map(&front, "UserId", "Name", users.len());
-    Ok(users.into_iter().map(|user| {
+    Ok(users.into_iter().map(|(user, privacy_preview)| {
         let front_text = map.get(&user.id).map(|list| list.join(", "))
             .map(|mut front_text| {
                 if front_text.len() > MAX_FRONT_TEXT_LENGTH {
@@ -45,8 +45,9 @@ SELECT DISTINCT f.UserId, m.Name FROM Front f JOIN Member m ON m.ID = f.MemberId
                 front_text
             });
         Friend {
-            front_text,
             user,
+            front_text,
+            privacy_preview,
         }
     }).collect())
 }

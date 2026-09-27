@@ -3,15 +3,19 @@ use sqlx::mysql::MySqlRow;
 use uuid::Uuid;
 use crate::database::{DatabasePool, DatabaseResult};
 use crate::model::friend::{FriendRequest, FriendSettings, PERMISSION_LEVEL_NOTIFICATIONS};
-use crate::model::user::UserId;
+use crate::model::user::{UserId, UserInfo};
 
-pub async fn get_friend_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<UserId>> {
-    let friends = query("SELECT FriendId FROM Friend WHERE UserId = ?")
+pub async fn get_previewed_friends(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<(UserInfo, Option<String>)>> {
+    let friends = query("SELECT u.ID, u.Name, u.AvatarUrl, u.Description, u.Color, u.System, f.PrivacyPreview FROM Friend f JOIN User u ON u.ID = f.FriendId WHERE f.UserId = ?")
         .bind(user_id)
         .fetch_all(pool.as_ref())
         .await?;
 
-    Ok(friends.into_iter().map(|row| row.get(0)).collect())
+    Ok(friends.into_iter().map(|row| {
+        let privacy_preview = row.get("PrivacyPreview");
+        let user = crate::database::user::user_info(row, None);
+        (user, privacy_preview)
+    }).collect())
 }
 
 pub async fn get_notified_friend_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<(UserId, bool)>> {
