@@ -15,7 +15,7 @@ pub async fn get_folder_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseRes
 }
 
 pub async fn get_updated_folders(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<Folder>> {
-    let updated = query("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE UserId = ? AND UpdatedAt > ?")
+    let updated = query("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, PrivacyPreview, CreatedAt, UpdatedAt FROM Folder WHERE UserId = ? AND UpdatedAt > ?")
         .bind(user_id)
         .bind(newer_than)
         .fetch_all(pool.as_ref())
@@ -41,7 +41,7 @@ WHERE UserId = ? AND EXISTS (
             .fetch_all(pool.as_ref())
             .await?
     } else {
-        query("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE UserId = ?")
+        query("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, PrivacyPreview, CreatedAt, UpdatedAt FROM Folder WHERE UserId = ?")
             .bind(user_id)
             .fetch_all(pool.as_ref())
             .await?
@@ -68,7 +68,7 @@ WHERE ID = ? AND UserId = ? AND EXISTS (
             .fetch_optional(pool.as_ref())
             .await?
     } else {
-        query("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE ID = ? AND UserId = ?")
+        query("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, PrivacyPreview, CreatedAt, UpdatedAt FROM Folder WHERE ID = ? AND UserId = ?")
             .bind(folder_id)
             .bind(user_id)
             .fetch_optional(pool.as_ref())
@@ -78,22 +78,44 @@ WHERE ID = ? AND UserId = ? AND EXISTS (
     Ok(res.map(folder))
 }
 
-pub async fn get_folders_by_ids(pool: &DatabasePool, folder_ids: &Vec<FolderId>, user_id: UserId) -> DatabaseResult<Vec<Folder>> {
+pub async fn get_folders_by_ids(pool: &DatabasePool, folder_ids: &Vec<FolderId>, user_id: UserId, friend_viewer: Option<UserId>) -> DatabaseResult<Vec<Folder>> {
     if folder_ids.is_empty() {
         return Ok(vec![]);
     }
     let placeholders = folder_ids.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
-    let sql = format!("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE ID IN ({placeholders}) AND UserId = ?");
-    let mut query = query(assert_sql_safe(sql));
-    for id in folder_ids {
-        query = query.bind(id);
-    }
-    let folders = query
-        .bind(user_id)
-        .fetch_all(pool.as_ref())
-        .await?;
+    let res = if let Some(friend_viewer) = friend_viewer {
+        let sql = format!(r#"
+SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt
+FROM Folder f
+WHERE ID IN ({placeholders}) AND UserId = ? AND EXISTS (
+    SELECT 1 FROM PrivacyBucketFolder pfo
+             INNER JOIN PrivacyBucketFriend pf
+             ON pf.BucketId = pfo.BucketId AND pf.UserId = pfo.UserId
+             WHERE pfo.FolderId = f.ID AND pf.FriendId = ?
+)
+"#);
+        let mut query = query(assert_sql_safe(sql));
+        for id in folder_ids {
+            query = query.bind(id);
+        }
+        query
+            .bind(user_id)
+            .bind(friend_viewer)
+            .fetch_all(pool.as_ref())
+            .await?
+    } else {
+        let sql = format!("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, PrivacyPreview, CreatedAt, UpdatedAt FROM Folder WHERE ID IN ({placeholders}) AND UserId = ?");
+        let mut query = query(assert_sql_safe(sql));
+        for id in folder_ids {
+            query = query.bind(id);
+        }
+        query
+            .bind(user_id)
+            .fetch_all(pool.as_ref())
+            .await?
+    };
 
-    Ok(folders.into_iter().map(folder).collect())
+    Ok(res.into_iter().map(folder).collect())
 }
 
 pub async fn create_folder<'a, E: DatabaseExecutor<'a>>(executor: E, folder: &Folder) -> DatabaseResult<FolderId> {
@@ -165,6 +187,7 @@ fn folder(row: MySqlRow) -> Folder {
     let description = row.get("Description");
     let emoji = row.get("Emoji");
     let color = row.get("Color");
+    let privacy_preview = row.try_get("PrivacyPreview").unwrap_or_default();
     let created_at = row.get("CreatedAt");
     let updated_at = row.get("UpdatedAt");
 
@@ -177,6 +200,7 @@ fn folder(row: MySqlRow) -> Folder {
         description,
         emoji,
         color,
+        privacy_preview,
         created_at,
         updated_at,
     }

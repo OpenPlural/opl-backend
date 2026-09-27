@@ -135,6 +135,7 @@ impl Into<Folder> for ImportFolder {
             id: 0,
             user_id: 0,
             parent_id: None,
+            privacy_preview: None,
             created_at: Default::default(),
             updated_at: Default::default(),
         }

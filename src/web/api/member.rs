@@ -43,7 +43,7 @@ pub async fn get_member(req: HttpRequest, data: Data<AppState>, path: Path<Membe
             let folders = if member.custom {
                 vec![]
             } else {
-                let folders = crate::database::folder::get_folders_by_ids(&data.pool, &member.folders, user_id).await.map_err(to_web_error)?;
+                let folders = crate::database::folder::get_folders_by_ids(&data.pool, &member.folders, user_id, token.as_friend_viewer(user_id)).await.map_err(to_web_error)?;
                 folders.into_iter().map(Into::into).collect()
             };
             let has_gallery = crate::database::gallery::has_member_gallery(&data.pool, member.id, user_id, token.as_friend_viewer(user_id)).await.map_err(to_web_error)?;

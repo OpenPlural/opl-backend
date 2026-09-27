@@ -19,6 +19,8 @@ pub struct Folder {
     pub emoji: Option<String>,
     #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub color: u32,
+    #[serde(rename = "privacyPreview", skip_deserializing)]
+    pub privacy_preview: Option<String>,
     #[serde(rename = "createdAt", skip_deserializing)]
     pub created_at: DateTime<Utc>,
     #[serde(rename = "updatedAt", skip_deserializing)]
