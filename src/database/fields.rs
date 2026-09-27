@@ -16,7 +16,7 @@ pub async fn get_field_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResu
 }
 
 pub async fn get_updated_fields(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<CustomField>> {
-    let updated = query("SELECT ID, UserId, Sort, Name, DataType, UpdatedAt FROM CustomField WHERE UserId = ? AND UpdatedAt > ?")
+    let updated = query("SELECT ID, UserId, Sort, Name, DataType, PrivacyPreview, UpdatedAt FROM CustomField WHERE UserId = ? AND UpdatedAt > ?")
         .bind(user_id)
         .bind(newer_than)
         .fetch_all(pool.as_ref())
@@ -26,7 +26,7 @@ pub async fn get_updated_fields(pool: &DatabasePool, user_id: UserId, newer_than
 }
 
 pub async fn get_fields(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<CustomField>> {
-    let fields = query("SELECT ID, UserId, Sort, Name, DataType, UpdatedAt FROM CustomField WHERE UserId = ?")
+    let fields = query("SELECT ID, UserId, Sort, Name, DataType, PrivacyPreview, UpdatedAt FROM CustomField WHERE UserId = ?")
         .bind(user_id)
         .fetch_all(pool.as_ref())
         .await?;
@@ -35,7 +35,7 @@ pub async fn get_fields(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<
 }
 
 pub async fn get_field_by_id(pool: &DatabasePool, field_id: CustomFieldId, user_id: UserId) -> DatabaseResult<Option<CustomField>> {
-    let res = query("SELECT ID, UserId, Sort, Name, DataType, UpdatedAt FROM CustomField WHERE ID = ? AND UserId = ?")
+    let res = query("SELECT ID, UserId, Sort, Name, DataType, PrivacyPreview, UpdatedAt FROM CustomField WHERE ID = ? AND UserId = ?")
         .bind(field_id)
         .bind(user_id)
         .fetch_optional(pool.as_ref())
@@ -230,6 +230,7 @@ fn field(row: MySqlRow) -> CustomField {
     let name = row.get("Name");
     let data_type = row.get("DataType");
     let data_type = CustomFieldDataType::from_repr(data_type).unwrap();
+    let privacy_preview = row.try_get("PrivacyPreview").unwrap_or_default();
     let updated_at = row.get("UpdatedAt");
 
     CustomField {
@@ -238,6 +239,7 @@ fn field(row: MySqlRow) -> CustomField {
         sort,
         name,
         data_type,
+        privacy_preview,
         updated_at,
     }
 }

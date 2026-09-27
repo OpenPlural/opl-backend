@@ -19,6 +19,8 @@ pub struct CustomField {
     pub name: String,
     #[serde(rename = "dataType")]
     pub data_type: CustomFieldDataType,
+    #[serde(rename = "privacyPreview", skip_deserializing)]
+    pub privacy_preview: Option<String>,
     #[serde(rename = "updatedAt", skip_deserializing)]
     pub updated_at: DateTime<Utc>,
 }

@@ -92,6 +92,7 @@ impl Into<CustomField> for ImportCustomField {
             data_type: self.data_type,
             id: 0,
             user_id: 0,
+            privacy_preview: None,
             updated_at: Default::default()
         }
     }
