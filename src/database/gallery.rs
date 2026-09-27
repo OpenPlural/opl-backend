@@ -17,7 +17,7 @@ pub async fn get_photo_album_ids(pool: &DatabasePool, user_id: UserId) -> Databa
 }
 
 pub async fn get_photo_albums(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<PhotoAlbum>> {
-    let albums = query("SELECT ID, UserId, MemberId, Sort, Name, Description, PhotoUrls, UpdatedAt FROM PhotoAlbum WHERE UserId = ?")
+    let albums = query("SELECT ID, UserId, MemberId, Sort, Name, Description, PhotoUrls, PrivacyPreview, UpdatedAt FROM PhotoAlbum WHERE UserId = ?")
         .bind(user_id)
         .fetch_all(pool.as_ref())
         .await?;
@@ -36,7 +36,7 @@ pub async fn get_photo_albums(pool: &DatabasePool, user_id: UserId) -> DatabaseR
 }
 
 pub async fn get_updated_photo_albums(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<PhotoAlbum>> {
-    let updated = query("SELECT ID, UserId, MemberId, Sort, Name, Description, PhotoUrls, UpdatedAt FROM PhotoAlbum WHERE UserId = ? AND UpdatedAt > ?")
+    let updated = query("SELECT ID, UserId, MemberId, Sort, Name, Description, PhotoUrls, PrivacyPreview, UpdatedAt FROM PhotoAlbum WHERE UserId = ? AND UpdatedAt > ?")
         .bind(user_id)
         .bind(newer_than)
         .fetch_all(pool.as_ref())
@@ -207,6 +207,7 @@ fn album(row: MySqlRow) -> Result<PhotoAlbum, serde_json::Error> {
     let sort = row.get("Sort");
     let name = row.get("Name");
     let description = row.get("Description");
+    let privacy_preview = row.try_get("PrivacyPreview").unwrap_or_default();
     let updated_at = row.get("UpdatedAt");
 
     Ok(PhotoAlbum {
@@ -217,6 +218,7 @@ fn album(row: MySqlRow) -> Result<PhotoAlbum, serde_json::Error> {
         name,
         description,
         photo_urls,
+        privacy_preview,
         updated_at,
     })
 }

@@ -286,6 +286,7 @@ impl Into<PhotoAlbum> for ImportPhotoAlbum {
             id: 0,
             user_id: 0,
             member_id: 0,
+            privacy_preview: None,
             updated_at: Default::default(),
         }
     }
