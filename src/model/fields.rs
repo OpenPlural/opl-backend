@@ -30,7 +30,8 @@ pub enum CustomFieldDataType {
     Color = 1,
     Date = 2,
     Time = 3,
-    DateTime = 4
+    DateTime = 4,
+    DayMonth = 5,
 }
 
 impl CustomField {
