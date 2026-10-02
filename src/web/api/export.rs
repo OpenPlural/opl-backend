@@ -80,6 +80,7 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
         sort: f.sort,
         name: f.name,
         data_type: f.data_type,
+        config: f.config,
         privacy: custom_field_privacy.remove(&f.id).unwrap_or_default(),
     }).collect();
 

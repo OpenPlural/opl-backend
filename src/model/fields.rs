@@ -19,6 +19,7 @@ pub struct CustomField {
     pub name: String,
     #[serde(rename = "dataType")]
     pub data_type: CustomFieldDataType,
+    pub config: Option<String>,
     #[serde(rename = "updatedAt", skip_deserializing)]
     pub updated_at: DateTime<Utc>,
 }
@@ -32,6 +33,7 @@ pub enum CustomFieldDataType {
     Time = 3,
     DateTime = 4,
     DayMonth = 5,
+    NamedScale = 6,
 }
 
 impl CustomField {
@@ -70,5 +72,6 @@ pub struct ViewedCustomFieldDataValue {
     pub name: String,
     #[serde(rename = "dataType")]
     pub data_type: CustomFieldDataType,
+    pub config: Option<String>,
     pub value: String,
 }

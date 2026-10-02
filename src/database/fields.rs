@@ -16,7 +16,7 @@ pub async fn get_field_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResu
 }
 
 pub async fn get_updated_fields(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<CustomField>> {
-    let updated = query("SELECT ID, UserId, Sort, Name, DataType, UpdatedAt FROM CustomField WHERE UserId = ? AND UpdatedAt > ?")
+    let updated = query("SELECT ID, UserId, Sort, Name, DataType, Config, UpdatedAt FROM CustomField WHERE UserId = ? AND UpdatedAt > ?")
         .bind(user_id)
         .bind(newer_than)
         .fetch_all(pool.as_ref())
@@ -26,7 +26,7 @@ pub async fn get_updated_fields(pool: &DatabasePool, user_id: UserId, newer_than
 }
 
 pub async fn get_fields(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<CustomField>> {
-    let fields = query("SELECT ID, UserId, Sort, Name, DataType, UpdatedAt FROM CustomField WHERE UserId = ?")
+    let fields = query("SELECT ID, UserId, Sort, Name, DataType, Config, UpdatedAt FROM CustomField WHERE UserId = ?")
         .bind(user_id)
         .fetch_all(pool.as_ref())
         .await?;
@@ -35,7 +35,7 @@ pub async fn get_fields(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<
 }
 
 pub async fn get_field_by_id(pool: &DatabasePool, field_id: CustomFieldId, user_id: UserId) -> DatabaseResult<Option<CustomField>> {
-    let res = query("SELECT ID, UserId, Sort, Name, DataType, UpdatedAt FROM CustomField WHERE ID = ? AND UserId = ?")
+    let res = query("SELECT ID, UserId, Sort, Name, DataType, Config, UpdatedAt FROM CustomField WHERE ID = ? AND UserId = ?")
         .bind(field_id)
         .bind(user_id)
         .fetch_optional(pool.as_ref())
@@ -45,11 +45,12 @@ pub async fn get_field_by_id(pool: &DatabasePool, field_id: CustomFieldId, user_
 }
 
 pub async fn create_field<'a, E: DatabaseExecutor<'a>>(executor: E, field: &CustomField) -> DatabaseResult<CustomFieldId> {
-    let id = query("INSERT INTO CustomField (UserId, Sort, Name, DataType) VALUES (?, ?, ?, ?) RETURNING ID")
+    let id = query("INSERT INTO CustomField (UserId, Sort, Name, DataType, Config) VALUES (?, ?, ?, ?, ?) RETURNING ID")
         .bind(field.user_id)
         .bind(field.sort)
         .bind(&field.name)
         .bind(field.data_type as u8)
+        .bind(&field.config)
         .fetch_one(executor)
         .await?;
 
@@ -67,10 +68,11 @@ pub async fn delete_field(pool: &DatabasePool, field_id: CustomFieldId, user_id:
 }
 
 pub async fn edit_field(pool: &DatabasePool, field: &CustomField) -> DatabaseResult<()> {
-    query("UPDATE CustomField SET Sort = ?, Name = ?, DataType = ? WHERE ID = ? AND UserId = ?")
+    query("UPDATE CustomField SET Sort = ?, Name = ?, DataType = ?, Config = ? WHERE ID = ? AND UserId = ?")
         .bind(field.sort)
         .bind(&field.name)
         .bind(field.data_type as u8)
+        .bind(&field.config)
         .bind(field.id)
         .bind(field.user_id)
         .execute(pool.as_ref())
@@ -130,7 +132,7 @@ pub async fn get_field_values_for_member(pool: &DatabasePool, user_id: UserId, m
 pub async fn get_viewed_field_values_for_member(pool: &DatabasePool, user_id: UserId, member_id: MemberId, friend_viewer: Option<UserId>) -> DatabaseResult<Vec<ViewedCustomFieldDataValue>> {
     let res = if let Some(friend_viewer) = friend_viewer {
         query(r#"
-SELECT cf.ID, Sort, Name, DataType, DataValue
+SELECT cf.ID, Sort, Name, DataType, Config, DataValue
 FROM CustomField cf
 INNER JOIN CustomFieldData cfd
 ON cfd.FieldId = cf.ID
@@ -147,7 +149,7 @@ WHERE cf.UserId = ? AND cfd.MemberId = ? AND EXISTS (
             .fetch_all(pool.as_ref())
             .await?
     } else {
-        query("SELECT cf.ID, Sort, Name, DataType, DataValue FROM CustomField cf INNER JOIN CustomFieldData cfd ON cfd.FieldId = cf.ID WHERE cf.UserId = ? AND cfd.MemberId = ?")
+        query("SELECT cf.ID, Sort, Name, DataType, Config, DataValue FROM CustomField cf INNER JOIN CustomFieldData cfd ON cfd.FieldId = cf.ID WHERE cf.UserId = ? AND cfd.MemberId = ?")
             .bind(user_id)
             .bind(member_id)
             .fetch_all(pool.as_ref())
@@ -160,12 +162,14 @@ WHERE cf.UserId = ? AND cfd.MemberId = ? AND EXISTS (
         let name = row.get("Name");
         let data_type = row.get("DataType");
         let data_type = CustomFieldDataType::from_repr(data_type).unwrap();
+        let config = row.get("Config");
         let value = row.get("DataValue");
         ViewedCustomFieldDataValue {
             id,
             sort,
             name,
             data_type,
+            config,
             value,
         }
     }).collect())
@@ -230,6 +234,7 @@ fn field(row: MySqlRow) -> CustomField {
     let name = row.get("Name");
     let data_type = row.get("DataType");
     let data_type = CustomFieldDataType::from_repr(data_type).unwrap();
+    let config = row.get("Config");
     let updated_at = row.get("UpdatedAt");
 
     CustomField {
@@ -238,6 +243,7 @@ fn field(row: MySqlRow) -> CustomField {
         sort,
         name,
         data_type,
+        config,
         updated_at,
     }
 }

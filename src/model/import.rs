@@ -75,6 +75,8 @@ pub struct ImportCustomField {
     pub name: String,
     #[serde(rename = "dataType")]
     pub data_type: CustomFieldDataType,
+    #[serde(default)]
+    pub config: Option<String>,
     pub privacy: Vec<String>,
 }
 
@@ -90,6 +92,7 @@ impl Into<CustomField> for ImportCustomField {
             sort: self.sort,
             name: self.name,
             data_type: self.data_type,
+            config: self.config,
             id: 0,
             user_id: 0,
             updated_at: Default::default()
