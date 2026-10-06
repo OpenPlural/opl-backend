@@ -66,6 +66,9 @@ impl From<Member> for ViewedMember {
 
 impl Member {
     pub fn validate(&self) -> Result<(), String> {
+        if let Some(pk_id) = &self.pk_id {
+            validate_string_length("Member", "pkId", pk_id, Some(1), Some(6), true)?;
+        }
         validate_string_length("Member", "name", &self.name, Some(1), Some(255), false)?;
         if let Some(pronouns) = &self.pronouns {
             validate_string_length("Member", "pronouns", pronouns, Some(1), Some(255), true)?;
