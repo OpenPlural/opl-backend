@@ -11,6 +11,7 @@ mod notification;
 mod frontwatch;
 mod numberstring;
 mod list_map;
+mod pluralkit;
 
 use crate::database::DatabasePool;
 use crate::middleware::authenticator_mw;
@@ -46,6 +47,7 @@ use crate::web::api::export::export;
 use crate::web::api::fields::{clear_field_value, create_field, create_field_value, delete_field, edit_field, get_field, get_field_privacy, get_field_value, get_field_values, get_fields, get_specific_field_values, update_field_value};
 use crate::web::api::import::import;
 use crate::web::api::notification::subscribe;
+use crate::web::api::pluralkit::{get_pk_config, sync_pk, update_pk_config};
 use crate::web::api::poll::{create_poll, create_poll_answer, delete_poll, delete_poll_answer, edit_poll, edit_poll_answer, get_poll, get_poll_answers, get_polls};
 use crate::web::api::privacy::{add_privacy_bucket_custom_field, add_privacy_bucket_folder, add_privacy_bucket_friend, add_privacy_bucket_member, add_privacy_bucket_photo_album, create_privacy_bucket, delete_privacy_bucket, edit_privacy_bucket, get_privacy_bucket, get_privacy_buckets, remove_privacy_bucket_custom_field, remove_privacy_bucket_folder, remove_privacy_bucket_friend, remove_privacy_bucket_member, remove_privacy_bucket_photo_album, reorder_privacy_buckets};
 
@@ -207,6 +209,12 @@ async fn main() -> std::io::Result<()> {
                     .service(
                         scope("/notification")
                             .service(subscribe)
+                    )
+                    .service(
+                        scope("/pluralkit")
+                            .service(get_pk_config)
+                            .service(update_pk_config)
+                            .service(sync_pk)
                     )
                     .service(
                         scope("/poll")

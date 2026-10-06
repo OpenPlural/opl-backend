@@ -20,6 +20,7 @@ pub mod poll;
 pub mod analytics;
 pub mod gallery;
 pub mod cdn;
+pub mod pluralkit;
 
 #[derive(Debug, Deserialize)]
 pub struct PageQuery {
