@@ -147,6 +147,8 @@ impl Into<Folder> for ImportFolder {
 #[derive(Serialize, Deserialize)]
 pub struct ImportMember {
     pub id: String,
+    #[serde(rename = "pkId")]
+    pub pk_id: Option<String>,
     pub name: String,
     pub pronouns: Option<String>,
     pub avatar: Option<String>,
@@ -180,6 +182,7 @@ impl ImportMember {
 impl Into<Member> for ImportMember {
     fn into(self) -> Member {
         Member {
+            pk_id: self.pk_id,
             name: self.name,
             pronouns: self.pronouns,
             avatar: self.avatar,

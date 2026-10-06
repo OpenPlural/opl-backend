@@ -12,6 +12,8 @@ pub struct Member {
     pub id: MemberId,
     #[serde(skip)]
     pub user_id: UserId,
+    #[serde(rename = "pkId")]
+    pub pk_id: Option<String>,
     pub sort: u16,
     pub name: String,
     pub pronouns: Option<String>,

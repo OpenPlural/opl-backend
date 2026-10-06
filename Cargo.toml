@@ -1,6 +1,6 @@
 [package]
 name = "opl-backend"
-version = "0.9.1"
+version = "0.10.0"
 edition = "2024"
 license = "GPL-3"
 
@@ -32,3 +32,8 @@ features = ["mysql", "runtime-tokio", "chrono", "uuid", "migrate"]
 [dependencies.tokio]
 version = "1.53.1"
 features = ["macros", "rt-multi-thread"]
+
+[dependencies.pluralkit]
+version = "0.1.4"
+default-features = false
+features = ["members"]

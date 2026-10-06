@@ -15,6 +15,7 @@ pub mod poll;
 pub mod analytics;
 pub mod gallery;
 pub mod cdn;
+pub mod pluralkit;
 
 use std::collections::HashMap;
 use std::hash::Hash;

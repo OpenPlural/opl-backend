@@ -101,6 +101,7 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
     let members = crate::database::member::get_members(&data.pool, user_id, None).await.map_err(to_web_error)?;
     let members = members.into_iter().map(|m| ImportMember {
         id: m.id.to_string(),
+        pk_id: m.pk_id,
         name: m.name,
         pronouns: m.pronouns,
         avatar: m.avatar,

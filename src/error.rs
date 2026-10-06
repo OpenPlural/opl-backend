@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use actix_web::{HttpResponse, ResponseError};
 use actix_web::body::BoxBody;
 use actix_web::http::StatusCode;
+use pluralkit::error::Error;
 use serde::Serialize;
 use strum_macros::IntoStaticStr;
 use thiserror::Error;
@@ -59,6 +60,11 @@ pub enum WebError {
 
     #[error("This member is already fronting")]
     AlreadyFronting,
+
+    #[error("PluralKit is not configured")]
+    PluralKitNotConfigured,
+    #[error("PluralKit error: {0:?}")]
+    PluralKitError(Error),
     
     #[error("You do not own this resource")]
     ResourceNotOwned,
@@ -94,6 +100,9 @@ impl ResponseError for WebError {
             WebError::CantFriendSelf => StatusCode::FORBIDDEN,
 
             WebError::AlreadyFronting => StatusCode::CONFLICT,
+
+            WebError::PluralKitNotConfigured => StatusCode::PRECONDITION_FAILED,
+            WebError::PluralKitError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             
             WebError::ResourceNotOwned => StatusCode::FORBIDDEN,
         }
@@ -110,6 +119,17 @@ impl ResponseError for WebError {
                 eprintln!("Cant set cookie: {:?}", err);
 
                 "Failed to set cookie".to_string()
+            },
+            WebError::PluralKitError(err) => {
+                eprintln!("PluralKit Error: {:?}", err);
+
+                let details = match err {
+                    Error::ApiError(err) => format!("Api returned {}/{}: {}", err.status_code.as_u16(), err.error_code, err.message),
+                    Error::Reqwest(_) => "Failed to request".to_string(),
+                    Error::RateLimitExceeded => "Rate limit exceeded".to_string(),
+                    _ => "?".to_string(),
+                };
+                format!("PluralKit error: {details}")
             }
             err => err.to_string(),
         };
