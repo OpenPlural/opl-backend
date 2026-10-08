@@ -1,6 +1,19 @@
 use serde::{Deserialize, Serialize};
 use crate::model::validate_string_length;
 
+#[derive(Debug, Deserialize)]
+pub struct PkSyncQuery {
+    #[serde(default)]
+    pub direction: PkSyncDirection
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub enum PkSyncDirection {
+    #[default]
+    Push,
+    Pull,
+}
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct PkConfig {
     pub token: Option<String>,

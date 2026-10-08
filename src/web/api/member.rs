@@ -99,7 +99,7 @@ pub async fn edit_member(req: HttpRequest, data: Data<AppState>, path: Path<Memb
     body.id = member_id;
     body.user_id = token.user_id;
 
-    crate::database::member::edit_member(&data.pool, &body).await.map_err(to_web_error)?;
+    crate::database::member::edit_member(&*data.pool, &body).await.map_err(to_web_error)?;
     ok_none()
 }
 
