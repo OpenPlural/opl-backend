@@ -41,6 +41,9 @@ pub async fn sync_pk(req: HttpRequest, data: Data<AppState>) -> WebResult {
     let Some(token) = config.token else { return Err(WebError::PluralKitNotConfigured) };
 
     let members = crate::database::member::get_members(&data.pool, user_id, None).await.map_err(to_web_error)?;
+    let members = members.into_iter()
+        .filter(|m| !m.custom)
+        .collect();
 
     crate::pluralkit::sync(&data.pool, &token, config.display_name, members).await?;
 
