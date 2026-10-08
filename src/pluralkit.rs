@@ -54,7 +54,6 @@ pub async fn sync(pool: &DatabasePool, token: &str, display_name: Option<String>
                     update_if_different(&mut pk_member.display_name, &Some(format_display_name(display_name, &member)), &mut update);
                 }
                 if update {
-                    println!("Update member {:?} for {} ({})", pk_member, member.id, member.name);
                     client.update_member(token, &pk_member).await.map_err(|e| WebError::PluralKitError(e))?;
                 }
                 continue;
@@ -72,7 +71,6 @@ pub async fn sync(pool: &DatabasePool, token: &str, display_name: Option<String>
             ..Default::default()
         };
         let pk_member = client.create_member(token, &pk_member).await.map_err(|e| WebError::PluralKitError(e))?;
-        println!("Create member {:?} for {} ({})", pk_member, member.id, member.name);
         crate::database::pluralkit::assign_member_pk_id(&pool, member.user_id, member.id, &pk_member.id).await.map_err(to_web_error)?;
     }
     Ok(())
