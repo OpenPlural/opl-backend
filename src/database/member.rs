@@ -175,8 +175,9 @@ WHERE MemberId = ? AND UserId = ? AND EXISTS (
 }
 
 pub async fn create_member<'a, E: DatabaseExecutor<'a>>(executor: E, member: &Member) -> DatabaseResult<MemberId> {
-    let id = query("INSERT INTO Member (UserId, Sort, Name, Pronouns, AvatarUrl, Description, Color, Archived, Custom) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING ID")
+    let id = query("INSERT INTO Member (UserId, PkId, Sort, Name, Pronouns, AvatarUrl, Description, Color, Archived, Custom) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING ID")
         .bind(member.user_id)
+        .bind(&member.pk_id)
         .bind(member.sort)
         .bind(&member.name)
         .bind(&member.pronouns)
@@ -201,7 +202,7 @@ pub async fn delete_member(pool: &DatabasePool, member_id: MemberId, user_id: Us
     Ok(())
 }
 
-pub async fn edit_member(pool: &DatabasePool, member: &Member) -> DatabaseResult<()> {
+pub async fn edit_member<'a, E: DatabaseExecutor<'a>>(executor: E, member: &Member) -> DatabaseResult<()> {
     query("UPDATE Member SET PkId = ?, Sort = ?, Name = ?, Pronouns = ?, AvatarUrl = ?, Description = ?, Color = ?, Archived = ? WHERE ID = ? AND UserId = ?")
         .bind(&member.pk_id)
         .bind(member.sort)
@@ -213,7 +214,7 @@ pub async fn edit_member(pool: &DatabasePool, member: &Member) -> DatabaseResult
         .bind(member.archived)
         .bind(member.id)
         .bind(member.user_id)
-        .execute(pool.as_ref())
+        .execute(executor)
         .await?;
 
     Ok(())

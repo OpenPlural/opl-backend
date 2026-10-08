@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 pub type MemberId = i64;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Member {
     #[serde(skip_deserializing)]
     pub id: MemberId,

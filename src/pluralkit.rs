@@ -3,6 +3,7 @@ use crate::error::WebError;
 use crate::model::member::Member;
 use pluralkit::PKClient;
 use tokio::sync::OnceCell;
+use crate::model::user::UserId;
 
 static CLIENT: OnceCell<PKClient> = OnceCell::const_new();
 
@@ -14,7 +15,61 @@ async fn get_client() -> &'static PKClient {
     }).await
 }
 
-pub async fn sync(pool: &DatabasePool, token: &str, display_name: Option<String>, members: Vec<Member>) -> Result<(), WebError> {
+pub async fn pull(pool: &DatabasePool, token: &str, user_id: UserId, members: Vec<Member>) -> Result<(), WebError> {
+    let client = get_client().await;
+    let pk_members = client.get_system_members(Some(token), "@me").await.map_err(|e| WebError::PluralKitError(e))?;
+    let mut transaction = pool.begin().await.map_err(|err| to_web_error(err.into()))?;
+    for pk_member in pk_members {
+        let member = members.iter().find(|m| m.pk_id.as_ref().map(|id| pk_member.id.eq(id)).unwrap_or_default());
+        if let Some(member) = member {
+            // Update
+            let mut member = member.clone();
+            let mut update = false;
+
+            let pk_name = pk_member.name.unwrap();
+            if member.name != pk_name {
+                member.name = pk_name;
+                update = true;
+            }
+
+            let pk_color = pk_member.color.map(|c| convert_hex_code_to_color(&c)).unwrap_or(16777215);
+            if member.color != pk_color {
+                member.color = pk_color;
+                update = true;
+            }
+
+            update_if_different(&mut member.pronouns, &pk_member.pronouns, &mut update);
+            update_if_different(&mut member.description, &pk_member.description, &mut update);
+            update_if_different(&mut member.avatar, &pk_member.avatar_url, &mut update);
+
+            if update {
+                crate::database::member::edit_member(transaction.as_mut(), &member).await.map_err(to_web_error)?;
+            }
+        } else {
+            // Create
+            let member = Member {
+                id: 0,
+                user_id,
+                pk_id: Some(pk_member.id),
+                sort: 0,
+                name: pk_member.name.unwrap(),
+                pronouns: pk_member.pronouns,
+                avatar: pk_member.avatar_url,
+                description: pk_member.description,
+                color: pk_member.color.map(|c| convert_hex_code_to_color(&c)).unwrap_or(16777215),
+                archived: false,
+                custom: false,
+                created_at: Default::default(),
+                updated_at: Default::default(),
+                folders: vec![],
+            };
+            crate::database::member::create_member(transaction.as_mut(), &member).await.map_err(to_web_error)?;
+        }
+    }
+    Ok(())
+}
+
+pub async fn push(pool: &DatabasePool, token: &str, display_name: Option<String>, members: Vec<Member>) -> Result<(), WebError> {
     let client = get_client().await;
     let pk_members = client.get_system_members(Some(token), "@me").await.map_err(|e| WebError::PluralKitError(e))?;
     let mut newly_assigned = Vec::with_capacity(pk_members.len());
@@ -76,19 +131,19 @@ pub async fn sync(pool: &DatabasePool, token: &str, display_name: Option<String>
     Ok(())
 }
 
-fn update_if_different(pk_value: &mut Option<String>, new_value: &Option<String>, update: &mut bool) {
-    if let Some(pk_value) = pk_value {
+fn update_if_different(old_value: &mut Option<String>, new_value: &Option<String>, update: &mut bool) {
+    if let Some(old_value) = old_value {
         if let Some(new_value) = new_value {
-            if pk_value != new_value {
-                *pk_value = new_value.clone();
+            if old_value != new_value {
+                *old_value = new_value.clone();
                 *update = true;
             }
         } else {
-            *pk_value = "".to_string();
+            *old_value = "".to_string();
             *update = true;
         }
     } else if new_value.is_some() {
-        *pk_value = new_value.clone();
+        *old_value = new_value.clone();
         *update = true;
     }
 }
@@ -103,4 +158,14 @@ fn convert_color_to_hex_code(color: u32) -> String {
     let g = (color >> 8) & 0xff;
     let b = color & 0xff;
     format!("{:02x}{:02x}{:02x}", r, g, b)
+}
+
+fn convert_hex_code_to_color(color: &str) -> u32 {
+    if color.len() == 6 {
+        let r = u8::from_str_radix(&color[0..2], 16).unwrap_or(255) as u32;
+        let g = u8::from_str_radix(&color[2..4], 16).unwrap_or(255) as u32;
+        let b = u8::from_str_radix(&color[4..6], 16).unwrap_or(255) as u32;
+        return (r << 16) | (g << 8) | b;
+    }
+    16777215
 }

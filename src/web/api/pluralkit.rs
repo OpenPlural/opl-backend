@@ -2,10 +2,10 @@ use crate::database::to_web_error;
 use crate::middleware::get_token;
 use crate::web::{ok, ok_none, validation_error, WebResult};
 use crate::AppState;
-use actix_web::web::{Data, Json};
+use actix_web::web::{Data, Json, Query};
 use actix_web::{get, post, HttpRequest};
 use crate::error::WebError;
-use crate::model::pluralkit::PkConfig;
+use crate::model::pluralkit::{PkConfig, PkSyncDirection, PkSyncQuery};
 
 #[get("/")]
 pub async fn get_pk_config(req: HttpRequest, data: Data<AppState>) -> WebResult {
@@ -30,7 +30,7 @@ pub async fn update_pk_config(req: HttpRequest, data: Data<AppState>, body: Json
 }
 
 #[post("/sync")]
-pub async fn sync_pk(req: HttpRequest, data: Data<AppState>) -> WebResult {
+pub async fn sync_pk(req: HttpRequest, data: Data<AppState>, query: Query<PkSyncQuery>) -> WebResult {
     let token = get_token(&req).unwrap();
     token.require_session()?;
 
@@ -45,7 +45,11 @@ pub async fn sync_pk(req: HttpRequest, data: Data<AppState>) -> WebResult {
         .filter(|m| !m.custom)
         .collect();
 
-    crate::pluralkit::sync(&data.pool, &token, config.display_name, members).await?;
+    let query = query.into_inner();
+    match query.direction {
+        PkSyncDirection::Push => crate::pluralkit::push(&data.pool, &token, config.display_name, members).await?,
+        PkSyncDirection::Pull => crate::pluralkit::pull(&data.pool, &token, user_id, members).await?,
+    }
 
     ok_none()
 }
