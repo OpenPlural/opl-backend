@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use actix_web::{post, HttpRequest};
 use actix_web::web::{Data, Json};
 use crate::AppState;
+use crate::cdn_extract::extract_cdn_url;
 use crate::database::to_web_error;
 use crate::error::WebError;
 use crate::middleware::get_token;
@@ -13,7 +14,9 @@ use crate::model::member::Member;
 use crate::model::poll::{Poll, PollAnswer};
 use crate::model::privacy::PrivacyBucket;
 use crate::model::user::UserInfo;
+use crate::security::base64_decode;
 use crate::web::{ok_none, validation_error, WebResult};
+use crate::web::api::cdn::do_upload_avatar;
 
 #[post("/")]
 pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) -> WebResult {
@@ -28,6 +31,25 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
     let body = body.into_inner();
     let mut transaction = data.pool.begin().await.map_err(|err| to_web_error(err.into()))?;
     {
+        let cdn_mapping = if let Some(cdn) = body.cdn {
+            let mut cdn_mapping = HashMap::new();
+            for (orig_id, avatar) in cdn {
+                if let Some(avatar) = avatar.strip_prefix("data:image/") {
+                    if let Some((ext, avatar)) = avatar.split_once(';') {
+                        if let Some(avatar) = avatar.strip_prefix("base64,") {
+                            let avatar = base64_decode(avatar).map_err(|err| WebError::InvalidPayload(format!("Invalid base64 image: {err}")))?;
+                            let resp = do_upload_avatar(avatar).await?;
+                            let url = format!(":cdn:{}:{}:{}", resp.id, ext, resp.access);
+                            cdn_mapping.insert(orig_id, url);
+                        }
+                    }
+                }
+            }
+            Some(cdn_mapping)
+        } else {
+            None
+        };
+
         if let Some(mut import_user) = body.user {
             if body.truncate {
                 import_user.truncate();
@@ -36,6 +58,7 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
             actual_user.id = user.id;
             actual_user.name = user.name.clone();
             actual_user.email = user.email.clone();
+            actual_user.avatar = use_cdn_url(actual_user.avatar, &cdn_mapping);
             actual_user.validate().map_err(validation_error)?;
             crate::database::user::update_user(transaction.as_mut(), &actual_user).await.map_err(to_web_error)?;
         }
@@ -133,6 +156,7 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
                 let mut actual_member: Member = member.into();
                 actual_member.validate().map_err(validation_error)?;
                 actual_member.user_id = token.user_id;
+                actual_member.avatar = use_cdn_url(actual_member.avatar, &cdn_mapping);
                 let actual_id = crate::database::member::create_member(transaction.as_mut(), &actual_member).await.map_err(to_web_error)?;
                 member_mapping.insert(id, actual_id);
 
@@ -219,6 +243,11 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
                         actual_album.validate().map_err(validation_error)?;
                         actual_album.user_id = token.user_id;
                         actual_album.member_id = *member_id;
+                        actual_album.photo_urls = actual_album.photo_urls.map(|u| {
+                            u.into_iter()
+                                .filter_map(|u| use_cdn_url(Some(u), &cdn_mapping))
+                                .collect()
+                        });
                         let album_id = crate::database::gallery::create_photo_album(transaction.as_mut(), &actual_album).await.map_err(to_web_error)?;
 
                         if let Some(privacy_mapping) = &privacy_mapping {
@@ -236,4 +265,15 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
     transaction.commit().await.map_err(|err| to_web_error(err.into()))?;
 
     ok_none()
+}
+
+fn use_cdn_url(avatar: Option<String>, cdn_mapping: &Option<HashMap<String, String>>) -> Option<String> {
+    if let Some(cdn_mapping) = &cdn_mapping {
+        if let Some(avatar) = &avatar {
+            if let Some((id, _, _)) = extract_cdn_url(avatar) {
+                return cdn_mapping.get(id).cloned();
+            }
+        }
+    }
+    avatar
 }

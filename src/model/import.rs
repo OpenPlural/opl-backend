@@ -25,6 +25,8 @@ pub struct Import {
     pub gallery: Option<Vec<ImportPhotoAlbum>>,
     #[serde(default)]
     pub user: Option<ImportUser>,
+    #[serde(default)]
+    pub cdn: Option<HashMap<String, String>>,
     #[serde(skip_serializing)]
     pub truncate: bool,
 }

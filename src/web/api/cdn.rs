@@ -21,14 +21,8 @@ pub async fn upload_avatar(req: HttpRequest, body: Bytes) -> WebResult {
     let token: RequestToken = get_token(&req).unwrap();
     token.require_session()?;
 
-    let id = store_image(body).await.map_err(to_web_error)?;
-
-    let access = get_access_token(&id);
-    let id = id.simple().to_string();
-    ok(UploadResponse {
-        id,
-        access,
-    })
+    let resp = do_upload_avatar(body).await?;
+    ok(resp)
 }
 
 #[get("/{id}.{mimeType}")]
@@ -36,26 +30,46 @@ pub async fn get_avatar(req: HttpRequest, path: Path<(String, String)>, query: Q
     let token: RequestToken = get_token(&req).unwrap();
     token.require_session()?;
 
-    let (id, mime_type) = path.into_inner();
-    let id = Uuid::parse_str(&id).map_err(|err| WebError::InvalidPayload(format!("Invalid uuid: {err}")))?;
-
     let week = Utc::now().timestamp() / 604800;
     if (week - query.week).unsigned_abs() > 1 {
         return Ok(HttpResponse::Forbidden().finish());
     }
 
-    let access = get_access_token(&id);
-    if access != query.access {
-        return Ok(HttpResponse::Forbidden().finish());
-    }
-
-    if !has_image(&id).await.map_err(to_web_error)? {
-        return Ok(HttpResponse::NotFound().finish());
-    }
-    let data = get_image(&id).await.map_err(to_web_error)?;
+    let (id, mime_type) = path.into_inner();
+    let data = match do_get_avatar(&id, &query.access).await? {
+        Ok(data) => data,
+        Err(resp) => return Ok(resp),
+    };
 
     let mut resp = HttpResponse::Ok();
     resp.content_type(format!("image/{mime_type}"));
     resp.insert_header(("Content-Disposition", format!("inline; filename={id}.{mime_type}")));
     Ok(resp.body(data))
+}
+
+pub async fn do_upload_avatar(avatar: impl AsRef<[u8]>) -> Result<UploadResponse, WebError> {
+    let id = store_image(avatar).await.map_err(to_web_error)?;
+
+    let access = get_access_token(&id);
+    let id = id.simple().to_string();
+    Ok(UploadResponse {
+        id,
+        access,
+    })
+}
+
+pub async fn do_get_avatar(id: &str, access: &str) -> Result<Result<Vec<u8>, HttpResponse>, WebError> {
+    let id = Uuid::parse_str(&id).map_err(|err| WebError::InvalidPayload(format!("Invalid uuid: {err}")))?;
+
+    let access_token = get_access_token(&id);
+    if access_token != access {
+        return Ok(Err(HttpResponse::Forbidden().finish()));
+    }
+
+
+    if !has_image(&id).await.map_err(to_web_error)? {
+        return Ok(Err(HttpResponse::NotFound().finish()));
+    }
+    let data = get_image(&id).await.map_err(to_web_error)?;
+    Ok(Ok(data))
 }
