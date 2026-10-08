@@ -12,6 +12,7 @@ mod frontwatch;
 mod numberstring;
 mod list_map;
 mod pluralkit;
+mod cdn_extract;
 
 use crate::database::DatabasePool;
 use crate::middleware::authenticator_mw;

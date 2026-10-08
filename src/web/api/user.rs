@@ -91,7 +91,7 @@ pub async fn edit_user(req: HttpRequest, data: Data<AppState>, body: Json<UserIn
     body.validate().map_err(validation_error)?;
     body.id = token.user_id;
     
-    crate::database::user::update_user(&data.pool, &body).await.map_err(to_web_error)?;
+    crate::database::user::update_user(&*data.pool, &body).await.map_err(to_web_error)?;
     ok_none()
 }
 

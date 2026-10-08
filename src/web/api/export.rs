@@ -1,7 +1,7 @@
 use crate::database::to_web_error;
 use crate::middleware::get_token;
 use crate::model::folder::FolderId;
-use crate::model::import::{Import, ImportCustomField, ImportFolder, ImportMember, ImportPhotoAlbum, ImportPoll, ImportPollAnswer, ImportPrivacyBucket};
+use crate::model::import::{Import, ImportCustomField, ImportFolder, ImportMember, ImportPhotoAlbum, ImportPoll, ImportPollAnswer, ImportPrivacyBucket, ImportUser};
 use crate::model::member::MemberId;
 use crate::web::{ok, WebResult};
 use crate::AppState;
@@ -13,10 +13,13 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Mutex, OnceCell};
 use tokio::time::Instant;
+use crate::cdn_extract::{extract_cdn_avatars, extract_cdn_url, CdnAvatarExtract};
 use crate::error::WebError;
 use crate::list_map::append;
 use crate::model::poll::PollId;
 use crate::model::user::UserId;
+use crate::security::base64_encode;
+use crate::web::api::cdn::do_get_avatar;
 
 const COOLDOWN_DURATION: Duration = Duration::from_hours(6);
 static USER_COOLDOWN: OnceCell<Arc<Mutex<HashMap<UserId, Instant>>>> = OnceCell::const_new();
@@ -48,6 +51,12 @@ pub async fn export(req: HttpRequest, data: Data<AppState>) -> WebResult {
 }
 
 pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
+    let user = crate::database::user::get_user_by_id(&data.pool, user_id, true).await.map_err(to_web_error)?;
+    let Some((user, _)) = user else {
+        return Err(WebError::InvalidToken)
+    };
+    let mut cdn = HashMap::new();
+
     let privacy = crate::database::privacy::get_privacy_buckets(&data.pool, user_id).await.map_err(to_web_error)?;
     let privacy = privacy.into_iter().map(|pb| ImportPrivacyBucket {
         id: pb.id.to_string(),
@@ -114,6 +123,7 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
         fields: custom_field_data.remove(&m.id).unwrap_or_default(),
         privacy: member_privacy.remove(&m.id).unwrap_or_default(),
     }).collect();
+    extract_cdn_avatars(&members, |m| m.avatar.as_ref().map(|u| CdnAvatarExtract::Single(u)).unwrap_or_default(), get_cdn_avatar, &mut cdn).await;
 
     let poll_answers = crate::database::poll::get_poll_answers_by_user_id(&data.pool, user_id).await.map_err(to_web_error)?;
     let mut poll_answers: HashMap<PollId, Vec<ImportPollAnswer>> = poll_answers.into_iter().fold(HashMap::new(), |mut map, answer| {
@@ -149,6 +159,19 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
         photo_urls: a.photo_urls,
         privacy: gallery_privacy.remove(&a.id).unwrap_or_default(),
     }).collect();
+    extract_cdn_avatars(&gallery, |a| a.photo_urls.as_ref().map(|u| CdnAvatarExtract::List(u)).unwrap_or_default(), get_cdn_avatar, &mut cdn).await;
+
+    if let Some(avatar) = &user.avatar && let Some((id, avatar)) = get_cdn_avatar(avatar).await {
+        cdn.insert(id, avatar);
+    }
+    let user = ImportUser {
+        name: Some(user.name),
+        email: user.email,
+        avatar: user.avatar,
+        description: user.description,
+        color: user.color,
+        system: user.system,
+    };
 
     ok(Import {
         privacy: Some(privacy),
@@ -157,8 +180,20 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
         members: Some(members),
         polls: Some(polls),
         gallery: Some(gallery),
+        user: Some(user),
+        cdn: Some(cdn),
         truncate: false,
     })
+}
+
+async fn get_cdn_avatar(avatar: &String) -> Option<(String, String)> {
+    if let Some((id, ext, access)) = extract_cdn_url(avatar) {
+        if let Ok(Ok(avatar)) = do_get_avatar(id, access).await {
+            let avatar = format!("data:image/{ext};base64,{}", base64_encode(avatar));
+            return Some((id.to_string(), avatar));
+        }
+    }
+    None
 }
 
 fn list_to_map<K: Eq + Hash, V: Sized + ToString>(list: Vec<(K, V)>) -> HashMap<K, Vec<String>> {
