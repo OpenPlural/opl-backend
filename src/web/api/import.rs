@@ -3,6 +3,7 @@ use actix_web::{post, HttpRequest};
 use actix_web::web::{Data, Json};
 use crate::AppState;
 use crate::database::to_web_error;
+use crate::error::WebError;
 use crate::middleware::get_token;
 use crate::model::fields::{CustomField, CustomFieldDataValue};
 use crate::model::folder::Folder;
@@ -11,6 +12,7 @@ use crate::model::import::Import;
 use crate::model::member::Member;
 use crate::model::poll::{Poll, PollAnswer};
 use crate::model::privacy::PrivacyBucket;
+use crate::model::user::UserInfo;
 use crate::web::{ok_none, validation_error, WebResult};
 
 #[post("/")]
@@ -18,9 +20,26 @@ pub async fn import(req: HttpRequest, data: Data<AppState>, body: Json<Import>) 
     let token = get_token(&req).unwrap();
     token.require_session()?;
 
+    let user = crate::database::user::get_user_by_id(&data.pool, token.user_id, true).await.map_err(to_web_error)?;
+    let Some((user, _)) = user else {
+        return Err(WebError::InvalidToken)
+    };
+
     let body = body.into_inner();
     let mut transaction = data.pool.begin().await.map_err(|err| to_web_error(err.into()))?;
     {
+        if let Some(mut import_user) = body.user {
+            if body.truncate {
+                import_user.truncate();
+            }
+            let mut actual_user: UserInfo = import_user.into();
+            actual_user.id = user.id;
+            actual_user.name = user.name.clone();
+            actual_user.email = user.email.clone();
+            actual_user.validate().map_err(validation_error)?;
+            crate::database::user::update_user(transaction.as_mut(), &actual_user).await.map_err(to_web_error)?;
+        }
+
         let privacy_mapping = if let Some(privacy) = body.privacy {
             let mut privacy_mapping = HashMap::new();
             for mut bucket in privacy {

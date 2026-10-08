@@ -185,7 +185,7 @@ pub async fn can_reset_password(pool: &DatabasePool, id: UserId) -> DatabaseResu
     }))
 }
 
-pub async fn update_user(pool: &DatabasePool, user: &UserInfo) -> DatabaseResult<()> {
+pub async fn update_user<'a, E: crate::database::DatabaseExecutor<'a>>(executor: E, user: &UserInfo) -> DatabaseResult<()> {
     query("UPDATE User SET Name = ?, Email = ?, AvatarUrl = ?, Description = ?, Color = ?, System = ? WHERE ID=?")
         .bind(&user.name)
         .bind(&user.email)
@@ -194,7 +194,7 @@ pub async fn update_user(pool: &DatabasePool, user: &UserInfo) -> DatabaseResult
         .bind(user.color)
         .bind(user.system)
         .bind(user.id)
-        .execute(pool.as_ref())
+        .execute(executor)
         .await?;
 
     Ok(())

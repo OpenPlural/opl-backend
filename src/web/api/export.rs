@@ -1,7 +1,7 @@
 use crate::database::to_web_error;
 use crate::middleware::get_token;
 use crate::model::folder::FolderId;
-use crate::model::import::{Import, ImportCustomField, ImportFolder, ImportMember, ImportPhotoAlbum, ImportPoll, ImportPollAnswer, ImportPrivacyBucket};
+use crate::model::import::{Import, ImportCustomField, ImportFolder, ImportMember, ImportPhotoAlbum, ImportPoll, ImportPollAnswer, ImportPrivacyBucket, ImportUser};
 use crate::model::member::MemberId;
 use crate::web::{ok, WebResult};
 use crate::AppState;
@@ -48,6 +48,11 @@ pub async fn export(req: HttpRequest, data: Data<AppState>) -> WebResult {
 }
 
 pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
+    let user = crate::database::user::get_user_by_id(&data.pool, user_id, true).await.map_err(to_web_error)?;
+    let Some((user, _)) = user else {
+        return Err(WebError::InvalidToken)
+    };
+
     let privacy = crate::database::privacy::get_privacy_buckets(&data.pool, user_id).await.map_err(to_web_error)?;
     let privacy = privacy.into_iter().map(|pb| ImportPrivacyBucket {
         id: pb.id.to_string(),
@@ -150,6 +155,15 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
         privacy: gallery_privacy.remove(&a.id).unwrap_or_default(),
     }).collect();
 
+    let user = ImportUser {
+        name: Some(user.name),
+        email: user.email,
+        avatar: user.avatar,
+        description: user.description,
+        color: user.color,
+        system: user.system,
+    };
+
     ok(Import {
         privacy: Some(privacy),
         fields: Some(custom_fields),
@@ -157,6 +171,7 @@ pub async fn do_export(data: Data<AppState>, user_id: UserId) -> WebResult {
         members: Some(members),
         polls: Some(polls),
         gallery: Some(gallery),
+        user: Some(user),
         truncate: false,
     })
 }

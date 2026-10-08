@@ -7,6 +7,7 @@ use crate::model::folder::Folder;
 use crate::model::gallery::PhotoAlbum;
 use crate::model::member::Member;
 use crate::model::poll::{Poll, POLL_MAX_OPTIONS};
+use crate::model::user::UserInfo;
 
 #[derive(Deserialize, Serialize)]
 pub struct Import {
@@ -22,6 +23,8 @@ pub struct Import {
     pub polls: Option<Vec<ImportPoll>>,
     #[serde(default)]
     pub gallery: Option<Vec<ImportPhotoAlbum>>,
+    #[serde(default)]
+    pub user: Option<ImportUser>,
     #[serde(skip_serializing)]
     pub truncate: bool,
 }
@@ -290,6 +293,44 @@ impl Into<PhotoAlbum> for ImportPhotoAlbum {
             user_id: 0,
             member_id: 0,
             updated_at: Default::default(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ImportUser {
+    #[serde(skip_deserializing)]
+    pub name: Option<String>,
+    #[serde(skip_deserializing)]
+    pub email: Option<String>,
+    pub avatar: Option<String>,
+    pub description: Option<String>,
+    #[serde(deserialize_with = "crate::numberstring::deserialize")]
+    pub color: u32,
+    pub system: bool,
+}
+
+impl ImportUser {
+    pub fn truncate(&mut self) {
+        if let Some(avatar) = &mut self.avatar {
+            avatar.truncate(avatar.floor_char_boundary(255));
+        }
+        if let Some(description) = &mut self.description {
+            description.truncate(description.floor_char_boundary(65535));
+        }
+    }
+}
+
+impl Into<UserInfo> for ImportUser {
+    fn into(self) -> UserInfo {
+        UserInfo {
+            avatar: self.avatar,
+            description: self.description,
+            color: self.color,
+            system: self.system,
+            id: 0,
+            name: "".to_string(),
+            email: None,
         }
     }
 }
