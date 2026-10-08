@@ -66,6 +66,7 @@ pub async fn pull(pool: &DatabasePool, token: &str, user_id: UserId, members: Ve
             crate::database::member::create_member(transaction.as_mut(), &member).await.map_err(to_web_error)?;
         }
     }
+    transaction.commit().await.map_err(|err| to_web_error(err.into()))?;
     Ok(())
 }
 
