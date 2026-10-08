@@ -40,7 +40,9 @@ pub async fn pull(pool: &DatabasePool, token: &str, user_id: UserId, members: Ve
 
             update_if_different(&mut member.pronouns, &pk_member.pronouns, &mut update);
             update_if_different(&mut member.description, &pk_member.description, &mut update);
-            update_if_different(&mut member.avatar, &pk_member.avatar_url, &mut update);
+            if member.avatar.is_none() {
+                update_if_different(&mut member.avatar, &pk_member.avatar_url, &mut update);
+            }
 
             if update {
                 crate::database::member::edit_member(transaction.as_mut(), &member).await.map_err(to_web_error)?;
