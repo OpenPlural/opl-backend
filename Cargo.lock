@@ -131,9 +131,9 @@ dependencies = [
 
 [[package]]
 name = "actix-web"
-version = "4.17.0"
+version = "4.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67756b0fc99e07b8702b9a856e3d6ec036387243c2ce6310070d1e8f02680bb0"
+checksum = "bbacab3593b6b4f7be815076fc52d60a83c873426824675417e2abdd229e2e36"
 dependencies = [
  "actix-codec",
  "actix-http",
@@ -168,7 +168,6 @@ dependencies = [
  "smallvec",
  "socket2",
  "time",
- "tokio",
  "tracing",
  "url",
 ]
@@ -2262,7 +2261,7 @@ dependencies = [
 
 [[package]]
 name = "opl-backend"
-version = "0.10.5"
+version = "0.10.6"
 dependencies = [
  "actix-web",
  "anyhow",
