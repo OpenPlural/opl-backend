@@ -33,6 +33,8 @@ pub enum WebError {
     InvalidCredentials,
     #[error("Your account has been disabled")]
     AccountDisabled,
+    #[error("Your account is temporarily blocked due to too many login attempts. Please try again later.")]
+    AccountLoginBlocked,
 
     #[error("Token does not have write permissions")]
     TokenPermissionDeniedWrite,
@@ -85,6 +87,7 @@ impl ResponseError for WebError {
             WebError::UsernameAlreadyExists => StatusCode::CONFLICT,
             WebError::InvalidCredentials => StatusCode::UNAUTHORIZED,
             WebError::AccountDisabled => StatusCode::UNAUTHORIZED,
+            WebError::AccountLoginBlocked => StatusCode::UNAUTHORIZED,
 
             WebError::TokenPermissionDeniedWrite => StatusCode::FORBIDDEN,
             WebError::TokenPermissionDeniedAdmin => StatusCode::FORBIDDEN,

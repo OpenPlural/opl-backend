@@ -32,7 +32,7 @@ pub async fn register(pool: &DatabasePool, user_name: &str, password: &str, syst
 }
 
 pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, password: &str) -> Result<(AccountInfo, String), WebError> {
-    let user = query("SELECT ID, Name, Email, AvatarUrl, Description, Color, System, CreatedAt, FriendCode, Password, AccountDisabled FROM User WHERE Name=?")
+    let user = query("SELECT ID, Name, Email, AvatarUrl, Description, Color, System, CreatedAt, FriendCode, Password, AccountDisabled, WrongPasswordEntries FROM User WHERE Name=?")
         .bind(user_name)
         .fetch_optional(pool.as_ref())
         .await
@@ -43,10 +43,19 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
             return Err(WebError::AccountDisabled);
         }
 
+        let wrong_password_entries: u8 = user.get("WrongPasswordEntries");
+        if wrong_password_entries >= 15 {
+            return Err(WebError::AccountLoginBlocked);
+        }
+
         let user_id: UserId = user.get("ID");
         let password_hash: String = user.get("Password");
 
         if verify(&password_hash, password).await.is_ok() {
+            if wrong_password_entries >= 10 {
+                return Err(WebError::AccountLoginBlocked);
+            }
+
             let token = random_string(SESSION_TOKEN_LENGTH);
             let token_hash = sha256(&token);
 
@@ -71,7 +80,7 @@ pub async fn login(pool: &DatabasePool, device_name: &str, user_name: &str, pass
                 user,
             }, token));
         } else {
-            query("UPDATE User SET WrongPasswordEntries=WrongPasswordEntries+1, AccountDisabled=IF(WrongPasswordEntries >= 10, TRUE, AccountDisabled) WHERE ID=?")
+            query("UPDATE User SET WrongPasswordEntries=WrongPasswordEntries+1 WHERE ID=?")
                 .bind(user_id)
                 .execute(pool.as_ref())
                 .await
