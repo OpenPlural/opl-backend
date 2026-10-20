@@ -21,6 +21,7 @@ jobs:
       WEB_PUSH_TRUSTED_ENDPOINTS:
       ADMIN_SECRET_TOKEN_SHA:
       CDN_ACCESS_SECRET:
+      CONTACT_INFORMATION:
     steps:
     - uses: actions/checkout@v4
     - name: Override with nightly toolchain
