@@ -1,11 +1,11 @@
 [package]
 name = "opl-backend"
-version = "0.10.6"
+version = "0.10.7"
 edition = "2024"
 license = "GPL-3"
 
 [dependencies]
-actix-web = "~4.15"
+actix-web = "~4.17"
 serde = "~1.0"
 serde_json = "~1.0"
 argon2 = "~0.6"
