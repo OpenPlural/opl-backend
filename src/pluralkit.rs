@@ -5,11 +5,13 @@ use pluralkit::PKClient;
 use tokio::sync::OnceCell;
 use crate::model::user::UserId;
 
+const CONTACT_INFORMATION: &'static str = env!("CONTACT_INFORMATION");
+
 static CLIENT: OnceCell<PKClient> = OnceCell::const_new();
 
 async fn get_client() -> &'static PKClient {
     CLIENT.get_or_init(|| async {
-        let mut client = PKClient::new("Open Plural Server".to_string());
+        let mut client = PKClient::new(format!("Open Plural Server [{CONTACT_INFORMATION}]"));
         client.max_retries = 5;
         client
     }).await
