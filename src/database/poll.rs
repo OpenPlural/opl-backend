@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use sqlx::mysql::MySqlRow;
 use sqlx::{query, Row};
-use crate::database::{DatabasePool, DatabaseResult};
+use crate::database::{assert_sql_safe, DatabaseExecutor, DatabasePool, DatabaseResult};
 use crate::model::poll::{Poll, PollAnswer, PollAnswerId, PollId};
 use crate::model::user::UserId;
 
@@ -64,7 +64,7 @@ pub async fn get_poll_by_id(pool: &DatabasePool, poll_id: PollId, user_id: UserI
     row.map(poll).transpose().map_err(|err| anyhow!(err))
 }
 
-pub async fn create_poll<'a, E: crate::database::DatabaseExecutor<'a>>(executor: E, poll: &Poll) -> DatabaseResult<PollId> {
+pub async fn create_poll<'a, E: DatabaseExecutor<'a>>(executor: E, poll: &Poll) -> DatabaseResult<PollId> {
     let custom_options = poll_options(poll).map_err(|err| anyhow!(err))?;
 
     let id = query("INSERT INTO Poll (UserId, Name, Description, CustomOptions, AllowAbstain, AllowVeto, OpenUntil) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING ID")
@@ -91,7 +91,24 @@ pub async fn delete_poll(pool: &DatabasePool, poll_id: PollId, user_id: UserId) 
     Ok(())
 }
 
-pub async fn edit_poll(pool: &DatabasePool, poll: &Poll) -> DatabaseResult<()> {
+pub async fn delete_polls<'a, E: DatabaseExecutor<'a>>(executor: E, poll_ids: Vec<PollId>, user_id: UserId) -> DatabaseResult<()> {
+    if poll_ids.is_empty() {
+        return Ok(());
+    }
+    let placeholders = poll_ids.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
+    let sql = format!("DELETE FROM Poll WHERE ID IN ({placeholders}) AND UserId = ?");
+    let mut query = query(assert_sql_safe(sql));
+    for id in poll_ids {
+        query = query.bind(id);
+    }
+    query
+        .bind(user_id)
+        .execute(executor)
+        .await?;
+    Ok(())
+}
+
+pub async fn edit_poll<'a, E: DatabaseExecutor<'a>>(executor: E, poll: &Poll) -> DatabaseResult<()> {
     query("UPDATE Poll SET Name = ?, Description = ?, AllowAbstain = ?, AllowVeto = ?, OpenUntil = ? WHERE ID = ? AND UserId = ?")
         .bind(&poll.name)
         .bind(&poll.description)
@@ -100,7 +117,7 @@ pub async fn edit_poll(pool: &DatabasePool, poll: &Poll) -> DatabaseResult<()> {
         .bind(&poll.open_until)
         .bind(poll.id)
         .bind(poll.user_id)
-        .execute(pool.as_ref())
+        .execute(executor)
         .await?;
 
     Ok(())
@@ -174,7 +191,7 @@ pub async fn get_poll_answers(pool: &DatabasePool, poll_id: PollId, user_id: Use
     }).collect())
 }
 
-pub async fn create_poll_answer<'a, E: crate::database::DatabaseExecutor<'a>>(executor: E, answer: &PollAnswer) -> DatabaseResult<PollId> {
+pub async fn create_poll_answer<'a, E: DatabaseExecutor<'a>>(executor: E, answer: &PollAnswer) -> DatabaseResult<PollId> {
     let id = query("INSERT INTO PollAnswer (UserId, PollId, MemberId, Answer, Comment) VALUES (?, ?, ?, ?, ?) RETURNING ID")
         .bind(answer.user_id)
         .bind(answer.poll_id)
@@ -197,13 +214,30 @@ pub async fn delete_poll_answer(pool: &DatabasePool, id: PollAnswerId, user_id: 
     Ok(())
 }
 
-pub async fn edit_poll_answer(pool: &DatabasePool, answer: &PollAnswer) -> DatabaseResult<()> {
+pub async fn delete_poll_answers<'a, E: DatabaseExecutor<'a>>(executor: E, poll_answer_ids: Vec<PollAnswerId>, user_id: UserId) -> DatabaseResult<()> {
+    if poll_answer_ids.is_empty() {
+        return Ok(());
+    }
+    let placeholders = poll_answer_ids.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
+    let sql = format!("DELETE FROM PollAnswer WHERE ID IN ({placeholders}) AND UserId = ?");
+    let mut query = query(assert_sql_safe(sql));
+    for id in poll_answer_ids {
+        query = query.bind(id);
+    }
+    query
+        .bind(user_id)
+        .execute(executor)
+        .await?;
+    Ok(())
+}
+
+pub async fn edit_poll_answer<'a, E: DatabaseExecutor<'a>>(executor: E, answer: &PollAnswer) -> DatabaseResult<()> {
     query("UPDATE PollAnswer SET Answer = ?, Comment = ? WHERE ID = ? AND UserId = ?")
         .bind(answer.answer)
         .bind(&answer.comment)
         .bind(answer.id)
         .bind(answer.user_id)
-        .execute(pool.as_ref())
+        .execute(executor)
         .await?;
 
     Ok(())

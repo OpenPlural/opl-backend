@@ -1,4 +1,4 @@
-use crate::database::{assert_sql_safe, DatabaseExecutor, DatabasePool, DatabaseResult};
+use crate::database::{assert_sql_safe, DatabaseExecutor, DatabasePool, DatabaseResult, DatabaseConnection};
 use crate::model::folder::FolderId;
 use crate::model::member::{Member, MemberId};
 use crate::model::user::UserId;
@@ -15,10 +15,10 @@ pub async fn get_member_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseRes
     Ok(ids.into_iter().map(|row| row.get(0)).collect())
 }
 
-pub async fn get_updated_members(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<Member>> {
-    let updated = query("SELECT ID, UserId, PkId, Sort, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom FROM Member WHERE UserId = ? AND UpdatedAt > ?")
+pub async fn get_updated_members(pool: &DatabasePool, user_id: UserId, since: &DateTime<Utc>) -> DatabaseResult<Vec<Member>> {
+    let updated = query("SELECT ID, UserId, PkId, Sort, Name, Pronouns, AvatarUrl, Description, Color, CreatedAt, UpdatedAt, Archived, Custom FROM Member WHERE UserId = ? AND UpdatedAt >= ?")
         .bind(user_id)
-        .bind(newer_than)
+        .bind(since)
         .fetch_all(pool.as_ref())
         .await?;
 
@@ -202,6 +202,23 @@ pub async fn delete_member(pool: &DatabasePool, member_id: MemberId, user_id: Us
     Ok(())
 }
 
+pub async fn delete_members<'a, E: DatabaseExecutor<'a>>(executor: E, member_ids: Vec<MemberId>, user_id: UserId) -> DatabaseResult<()> {
+    if member_ids.is_empty() {
+        return Ok(());
+    }
+    let placeholders = member_ids.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
+    let sql = format!("DELETE FROM Member WHERE ID IN ({placeholders}) AND UserId = ?");
+    let mut query = query(assert_sql_safe(sql));
+    for id in member_ids {
+        query = query.bind(id);
+    }
+    query
+        .bind(user_id)
+        .execute(executor)
+        .await?;
+    Ok(())
+}
+
 pub async fn edit_member<'a, E: DatabaseExecutor<'a>>(executor: E, member: &Member) -> DatabaseResult<()> {
     query("UPDATE Member SET PkId = ?, Sort = ?, Name = ?, Pronouns = ?, AvatarUrl = ?, Description = ?, Color = ?, Archived = ? WHERE ID = ? AND UserId = ?")
         .bind(&member.pk_id)
@@ -222,7 +239,12 @@ pub async fn edit_member<'a, E: DatabaseExecutor<'a>>(executor: E, member: &Memb
 
 pub async fn edit_member_folders(pool: &DatabasePool, member_id: MemberId, user_id: UserId, folder_ids: &[FolderId]) -> DatabaseResult<()> {
     let mut tx = pool.begin().await?;
+    edit_member_folders_in_transaction(tx.as_mut(), member_id, user_id, folder_ids).await?;
+    tx.commit().await?;
+    Ok(())
+}
 
+async fn edit_member_folders_in_transaction(tx: &mut DatabaseConnection, member_id: MemberId, user_id: UserId, folder_ids: &[FolderId]) -> DatabaseResult<()> {
     query("DELETE FROM MemberFolder WHERE MemberId = ? AND UserId = ?")
         .bind(member_id)
         .bind(user_id)
@@ -239,7 +261,18 @@ pub async fn edit_member_folders(pool: &DatabasePool, member_id: MemberId, user_
         .execute(&mut *tx)
         .await?;
 
-    tx.commit().await?;
+    Ok(())
+}
+
+pub async fn create_member_with_folders(tx: &mut DatabaseConnection, member: &Member) -> DatabaseResult<MemberId> {
+    let id = create_member(&mut *tx, member).await?;
+    edit_member_folders_in_transaction(tx, id, member.user_id, &member.folders).await?;
+    Ok(id)
+}
+
+pub async fn edit_member_with_folders(tx: &mut DatabaseConnection, member: &Member) -> DatabaseResult<()> {
+    edit_member(&mut *tx, member).await?;
+    edit_member_folders_in_transaction(tx, member.id, member.user_id, &member.folders).await?;
     Ok(())
 }
 

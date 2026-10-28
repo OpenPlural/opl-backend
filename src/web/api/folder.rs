@@ -7,7 +7,7 @@ use crate::web::{not_found, ok, ok_none, validation_error, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Json, Path, Query};
 use actix_web::{delete, get, patch, post, put, HttpRequest};
-use crate::model::IdResponse;
+use crate::model::{IdResponse, Validator};
 use crate::model::privacy::PrivacyBucketId;
 
 #[get("/")]
@@ -80,7 +80,7 @@ pub async fn edit_folder(req: HttpRequest, data: Data<AppState>, path: Path<Fold
     body.id = folder_id;
     body.user_id = token.user_id;
     
-    crate::database::folder::edit_folder(&data.pool, &body).await.map_err(to_web_error)?;
+    crate::database::folder::edit_folder(&*data.pool, &body).await.map_err(to_web_error)?;
     ok_none()
 }
 

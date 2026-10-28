@@ -1,13 +1,14 @@
 use crate::model::user::UserId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use crate::model::{validate_color_range, validate_string_length};
+use crate::model::{validate_color_range, validate_string_length, Validator};
+use crate::model::sync_v2::Syncable;
 
 pub type FolderId = i64;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Folder {
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub id: FolderId,
     #[serde(skip)]
     pub user_id: UserId,
@@ -21,7 +22,7 @@ pub struct Folder {
     pub color: u32,
     #[serde(rename = "createdAt", skip_deserializing)]
     pub created_at: DateTime<Utc>,
-    #[serde(rename = "updatedAt", skip_deserializing)]
+    #[serde(rename = "updatedAt", default)]
     pub updated_at: DateTime<Utc>,
 }
 
@@ -51,8 +52,22 @@ impl From<Folder> for ViewedFolder {
     }
 }
 
-impl Folder {
-    pub fn validate(&self) -> Result<(), String> {
+impl Syncable for Folder {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn set_user(&mut self, user_id: UserId) {
+        self.user_id = user_id;
+    }
+
+    fn updated_at(&self) -> &DateTime<Utc> {
+        &self.updated_at
+    }
+}
+
+impl Validator for Folder {
+    fn validate(&self) -> Result<(), String> {
         validate_string_length("Folder", "name", &self.name, Some(1), Some(255), false)?;
         if let Some(description) = &self.description {
             validate_string_length("Folder", "description", description, Some(1), Some(65535), true)?;

@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use sqlx::{query, Row};
 use sqlx::mysql::MySqlRow;
-use crate::database::{DatabaseExecutor, DatabasePool, DatabaseResult};
+use crate::database::{assert_sql_safe, DatabaseExecutor, DatabasePool, DatabaseResult};
 use crate::model::gallery::{PhotoAlbum, PhotoAlbumId, ViewedPhotoAlbum};
 use crate::model::member::MemberId;
 use crate::model::user::UserId;
@@ -171,7 +171,24 @@ pub async fn delete_photo_album_by_id(pool: &DatabasePool, album_id: PhotoAlbumI
     Ok(())
 }
 
-pub async fn edit_photo_album(pool: &DatabasePool, album: &PhotoAlbum) -> DatabaseResult<()> {
+pub async fn delete_photo_albums<'a, E: DatabaseExecutor<'a>>(executor: E, album_ids: Vec<PhotoAlbumId>, user_id: UserId) -> DatabaseResult<()> {
+    if album_ids.is_empty() {
+        return Ok(());
+    }
+    let placeholders = album_ids.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
+    let sql = format!("DELETE FROM PhotoAlbum WHERE ID IN ({placeholders}) AND UserId = ?");
+    let mut query = query(assert_sql_safe(sql));
+    for id in album_ids {
+        query = query.bind(id);
+    }
+    query
+        .bind(user_id)
+        .execute(executor)
+        .await?;
+    Ok(())
+}
+
+pub async fn edit_photo_album<'a, E: DatabaseExecutor<'a>>(executor: E, album: &PhotoAlbum) -> DatabaseResult<()> {
     let photo_urls = serialize_photo_urls(&album.photo_urls).map_err(|err| anyhow!(err))?;
 
     query("UPDATE PhotoAlbum SET Sort = ?, Name = ?, Description = ?, PhotoUrls = ? WHERE ID = ? AND UserId = ? AND MemberId = ?")
@@ -182,7 +199,7 @@ pub async fn edit_photo_album(pool: &DatabasePool, album: &PhotoAlbum) -> Databa
         .bind(album.id)
         .bind(album.user_id)
         .bind(album.member_id)
-        .execute(pool.as_ref())
+        .execute(executor)
         .await?;
 
     Ok(())

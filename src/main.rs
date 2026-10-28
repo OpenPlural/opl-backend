@@ -51,6 +51,7 @@ use crate::web::api::notification::subscribe;
 use crate::web::api::pluralkit::{get_pk_config, sync_pk, update_pk_config};
 use crate::web::api::poll::{create_poll, create_poll_answer, delete_poll, delete_poll_answer, edit_poll, edit_poll_answer, get_poll, get_poll_answers, get_polls};
 use crate::web::api::privacy::{add_privacy_bucket_custom_field, add_privacy_bucket_folder, add_privacy_bucket_friend, add_privacy_bucket_member, add_privacy_bucket_photo_album, create_privacy_bucket, delete_privacy_bucket, edit_privacy_bucket, get_privacy_bucket, get_privacy_buckets, remove_privacy_bucket_custom_field, remove_privacy_bucket_folder, remove_privacy_bucket_friend, remove_privacy_bucket_member, remove_privacy_bucket_photo_album, reorder_privacy_buckets};
+use crate::web::api::sync_v2::{sync_front, sync_v2};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -268,6 +269,14 @@ async fn main() -> std::io::Result<()> {
                                     .service(get_username)
                                     .service(edit_user)
                                     .service(change_friend_code)
+                            )
+                    )
+                    .service(
+                        scope("/v2")
+                            .service(
+                                scope("/sync")
+                                    .service(sync_v2)
+                                    .service(sync_front)
                             )
                     )
             )

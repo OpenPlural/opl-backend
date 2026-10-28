@@ -1,4 +1,4 @@
-use crate::database::{DatabaseExecutor, DatabasePool, DatabaseResult};
+use crate::database::{assert_sql_safe, DatabaseExecutor, DatabasePool, DatabaseResult};
 use crate::model::fields::{CustomField, CustomFieldDataId, CustomFieldDataType, CustomFieldDataValue, CustomFieldId, ViewedCustomFieldDataValue};
 use crate::model::member::MemberId;
 use crate::model::user::UserId;
@@ -15,10 +15,10 @@ pub async fn get_field_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseResu
     Ok(ids.into_iter().map(|row| row.get(0)).collect())
 }
 
-pub async fn get_updated_fields(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<CustomField>> {
-    let updated = query("SELECT ID, UserId, Sort, Name, DataType, Config, UpdatedAt FROM CustomField WHERE UserId = ? AND UpdatedAt > ?")
+pub async fn get_updated_fields(pool: &DatabasePool, user_id: UserId, since: &DateTime<Utc>) -> DatabaseResult<Vec<CustomField>> {
+    let updated = query("SELECT ID, UserId, Sort, Name, DataType, Config, UpdatedAt FROM CustomField WHERE UserId = ? AND UpdatedAt >= ?")
         .bind(user_id)
-        .bind(newer_than)
+        .bind(since)
         .fetch_all(pool.as_ref())
         .await?;
 
@@ -67,7 +67,24 @@ pub async fn delete_field(pool: &DatabasePool, field_id: CustomFieldId, user_id:
     Ok(())
 }
 
-pub async fn edit_field(pool: &DatabasePool, field: &CustomField) -> DatabaseResult<()> {
+pub async fn delete_fields<'a, E: DatabaseExecutor<'a>>(executor: E, field_ids: Vec<CustomFieldId>, user_id: UserId) -> DatabaseResult<()> {
+    if field_ids.is_empty() {
+        return Ok(());
+    }
+    let placeholders = field_ids.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
+    let sql = format!("DELETE FROM CustomField WHERE ID IN ({placeholders}) AND UserId = ?");
+    let mut query = query(assert_sql_safe(sql));
+    for id in field_ids {
+        query = query.bind(id);
+    }
+    query
+        .bind(user_id)
+        .execute(executor)
+        .await?;
+    Ok(())
+}
+
+pub async fn edit_field<'a, E: DatabaseExecutor<'a>>(executor: E, field: &CustomField) -> DatabaseResult<()> {
     query("UPDATE CustomField SET Sort = ?, Name = ?, DataType = ?, Config = ? WHERE ID = ? AND UserId = ?")
         .bind(field.sort)
         .bind(&field.name)
@@ -75,7 +92,7 @@ pub async fn edit_field(pool: &DatabasePool, field: &CustomField) -> DatabaseRes
         .bind(&field.config)
         .bind(field.id)
         .bind(field.user_id)
-        .execute(pool.as_ref())
+        .execute(executor)
         .await?;
 
     Ok(())
@@ -99,10 +116,10 @@ pub async fn get_field_values(pool: &DatabasePool, user_id: UserId) -> DatabaseR
     Ok(updated.into_iter().map(field_value).collect())
 }
 
-pub async fn get_updated_field_values(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<CustomFieldDataValue>> {
-    let updated = query("SELECT ID, UserId, FieldId, MemberId, DataValue, UpdatedAt FROM CustomFieldData WHERE UserId = ? AND UpdatedAt > ?")
+pub async fn get_updated_field_values(pool: &DatabasePool, user_id: UserId, since: &DateTime<Utc>) -> DatabaseResult<Vec<CustomFieldDataValue>> {
+    let updated = query("SELECT ID, UserId, FieldId, MemberId, DataValue, UpdatedAt FROM CustomFieldData WHERE UserId = ? AND UpdatedAt >= ?")
         .bind(user_id)
-        .bind(newer_than)
+        .bind(since)
         .fetch_all(pool.as_ref())
         .await?;
 
@@ -197,14 +214,31 @@ pub async fn create_field_value<'a, E: DatabaseExecutor<'a>>(executor: E, value:
     Ok(id.get(0))
 }
 
-pub async fn update_field_value(pool: &DatabasePool, value: &CustomFieldDataValue) -> DatabaseResult<()> {
+pub async fn edit_field_value<'a, E: DatabaseExecutor<'a>>(executor: E, value: &CustomFieldDataValue) -> DatabaseResult<()> {
     query("UPDATE CustomFieldData SET DataValue = ? WHERE ID = ? AND UserId = ?")
         .bind(&value.value)
         .bind(value.id)
         .bind(value.user_id)
-        .execute(pool.as_ref())
+        .execute(executor)
         .await?;
 
+    Ok(())
+}
+
+pub async fn clear_field_values<'a, E: DatabaseExecutor<'a>>(executor: E, data_ids: Vec<CustomFieldDataId>, user_id: UserId) -> DatabaseResult<()> {
+    if data_ids.is_empty() {
+        return Ok(());
+    }
+    let placeholders = data_ids.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
+    let sql = format!("DELETE FROM CustomFieldData WHERE ID IN ({placeholders}) AND UserId = ?");
+    let mut query = query(assert_sql_safe(sql));
+    for id in data_ids {
+        query = query.bind(id);
+    }
+    query
+        .bind(user_id)
+        .execute(executor)
+        .await?;
     Ok(())
 }
 

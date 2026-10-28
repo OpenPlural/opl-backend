@@ -14,10 +14,10 @@ pub async fn get_folder_ids(pool: &DatabasePool, user_id: UserId) -> DatabaseRes
     Ok(ids.into_iter().map(|row| row.get(0)).collect())
 }
 
-pub async fn get_updated_folders(pool: &DatabasePool, user_id: UserId, newer_than: &DateTime<Utc>) -> DatabaseResult<Vec<Folder>> {
-    let updated = query("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE UserId = ? AND UpdatedAt > ?")
+pub async fn get_updated_folders(pool: &DatabasePool, user_id: UserId, since: &DateTime<Utc>) -> DatabaseResult<Vec<Folder>> {
+    let updated = query("SELECT ID, UserId, ParentId, Sort, Name, Description, Emoji, Color, CreatedAt, UpdatedAt FROM Folder WHERE UserId = ? AND UpdatedAt >= ?")
         .bind(user_id)
-        .bind(newer_than)
+        .bind(since)
         .fetch_all(pool.as_ref())
         .await?;
 
@@ -131,7 +131,24 @@ pub async fn delete_folder(pool: &DatabasePool, folder_id: FolderId, user_id: Us
     Ok(())
 }
 
-pub async fn edit_folder(pool: &DatabasePool, folder: &Folder) -> DatabaseResult<()> {
+pub async fn delete_folders<'a, E: DatabaseExecutor<'a>>(executor: E, folder_ids: Vec<FolderId>, user_id: UserId) -> DatabaseResult<()> {
+    if folder_ids.is_empty() {
+        return Ok(());
+    }
+    let placeholders = folder_ids.iter().map(|_| "?").collect::<Vec<&str>>().join(", ");
+    let sql = format!("DELETE FROM Folder WHERE ID IN ({placeholders}) AND UserId = ?");
+    let mut query = query(assert_sql_safe(sql));
+    for id in folder_ids {
+        query = query.bind(id);
+    }
+    query
+        .bind(user_id)
+        .execute(executor)
+        .await?;
+    Ok(())
+}
+
+pub async fn edit_folder<'a, E: DatabaseExecutor<'a>>(executor: E, folder: &Folder) -> DatabaseResult<()> {
     query("UPDATE Folder SET ParentId = ?, Sort = ?, Name = ?, Description = ?, Emoji = ?, Color = ? WHERE ID = ? AND UserId = ?")
         .bind(folder.parent_id)
         .bind(folder.sort)
@@ -141,7 +158,7 @@ pub async fn edit_folder(pool: &DatabasePool, folder: &Folder) -> DatabaseResult
         .bind(&folder.color)
         .bind(folder.id)
         .bind(folder.user_id)
-        .execute(pool.as_ref())
+        .execute(executor)
         .await?;
 
     Ok(())

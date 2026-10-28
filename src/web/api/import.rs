@@ -14,6 +14,7 @@ use crate::model::member::Member;
 use crate::model::poll::{Poll, PollAnswer};
 use crate::model::privacy::PrivacyBucket;
 use crate::model::user::UserInfo;
+use crate::model::Validator;
 use crate::security::base64_decode;
 use crate::web::{ok_none, validation_error, WebResult};
 use crate::web::api::cdn::do_upload_avatar;

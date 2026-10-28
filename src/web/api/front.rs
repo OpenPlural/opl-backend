@@ -3,7 +3,7 @@ use crate::middleware::get_token;
 use crate::model::friend::PERMISSION_LEVEL_FRONT;
 use crate::model::front::{FrontEntry, FrontEntryId, ViewedFrontEntry};
 use crate::model::user::UserFilter;
-use crate::model::{DateRangeQuery, IdResponse, PageQuery};
+use crate::model::{DateRangeQuery, IdResponse, PageQuery, Validator};
 use crate::web::{not_found, ok, ok_none, validation_error, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Json, Path, Query};
@@ -63,7 +63,7 @@ pub async fn add_front_entry(req: HttpRequest, data: Data<AppState>, body: Json<
         }
     }
 
-    let id = crate::database::front::add_front_entry(&data.pool, &body).await.map_err(to_web_error)?;
+    let id = crate::database::front::add_front_entry(&*data.pool, &body).await.map_err(to_web_error)?;
     crate::frontwatch::notify_front_change(token.user_id).await;
     ok(IdResponse {
         id
@@ -101,7 +101,7 @@ pub async fn edit_front_entry(req: HttpRequest, data: Data<AppState>, path: Path
         }
     }
 
-    crate::database::front::edit_front_entry(&data.pool, &body).await.map_err(to_web_error)?;
+    crate::database::front::edit_front_entry(&*data.pool, &body).await.map_err(to_web_error)?;
     crate::frontwatch::notify_front_change(token.user_id).await;
     ok_none()
 }

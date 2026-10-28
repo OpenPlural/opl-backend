@@ -2,15 +2,16 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use strum_macros::FromRepr;
 use crate::model::member::MemberId;
+use crate::model::sync_v2::Syncable;
 use crate::model::user::UserId;
-use crate::model::validate_string_length;
+use crate::model::{validate_string_length, Validator};
 
 pub type CustomFieldId = i64;
 pub type CustomFieldDataId = i64;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CustomField {
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub id: CustomFieldId,
     #[serde(skip)]
     pub user_id: UserId,
@@ -20,7 +21,7 @@ pub struct CustomField {
     #[serde(rename = "dataType")]
     pub data_type: CustomFieldDataType,
     pub config: Option<String>,
-    #[serde(rename = "updatedAt", skip_deserializing)]
+    #[serde(rename = "updatedAt", default)]
     pub updated_at: DateTime<Utc>,
 }
 
@@ -36,8 +37,22 @@ pub enum CustomFieldDataType {
     NamedScale = 6,
 }
 
-impl CustomField {
-    pub fn validate(&self) -> Result<(), String> {
+impl Syncable for CustomField {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn set_user(&mut self, user_id: UserId) {
+        self.user_id = user_id;
+    }
+
+    fn updated_at(&self) -> &DateTime<Utc> {
+        &self.updated_at
+    }
+}
+
+impl Validator for CustomField {
+    fn validate(&self) -> Result<(), String> {
         validate_string_length("CustomField", "name", &self.name, Some(1), Some(255), false)?;
         Ok(())
     }
@@ -45,7 +60,7 @@ impl CustomField {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CustomFieldDataValue {
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub id: CustomFieldDataId,
     #[serde(skip)]
     pub user_id: UserId,
@@ -54,12 +69,26 @@ pub struct CustomFieldDataValue {
     #[serde(rename = "memberId", deserialize_with = "crate::numberstring::deserialize")]
     pub member_id: MemberId,
     pub value: String,
-    #[serde(rename = "updatedAt", skip_deserializing)]
+    #[serde(rename = "updatedAt", default)]
     pub updated_at: DateTime<Utc>,
 }
 
-impl CustomFieldDataValue {
-    pub fn validate(&self) -> Result<(), String> {
+impl Syncable for CustomFieldDataValue {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn set_user(&mut self, user_id: UserId) {
+        self.user_id = user_id;
+    }
+
+    fn updated_at(&self) -> &DateTime<Utc> {
+        &self.updated_at
+    }
+}
+
+impl Validator for CustomFieldDataValue {
+    fn validate(&self) -> Result<(), String> {
         validate_string_length("CustomFieldDataValue", "value", &self.value, Some(1), Some(65535), false)?;
         Ok(())
     }

@@ -21,10 +21,12 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
 use sqlx::mysql::MySqlRow;
-use sqlx::{AssertSqlSafe, Decode, Executor, MySql, MySqlPool, Row, SqlSafeStr, SqlStr, Type};
+use sqlx::{AssertSqlSafe, Decode, Executor, MySql, MySqlConnection, MySqlPool, Row, SqlSafeStr, SqlStr, Transaction, Type};
 use crate::error::WebError;
 use crate::list_map::append;
 
+pub type DatabaseConnection = MySqlConnection;
+pub type DatabaseTransaction<'a> = Transaction<'a, MySql>;
 pub type DatabasePool = Arc<MySqlPool>;
 pub type DatabaseResult<T> = Result<T, anyhow::Error>;
 pub trait DatabaseExecutor<'a> = Executor<'a, Database = MySql>;

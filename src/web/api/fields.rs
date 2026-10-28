@@ -1,7 +1,7 @@
 use crate::database::to_web_error;
 use crate::middleware::get_token;
 use crate::model::fields::{CustomField, CustomFieldDataId, CustomFieldDataValue, CustomFieldId};
-use crate::model::IdResponse;
+use crate::model::{IdResponse, Validator};
 use crate::web::{not_found, ok, ok_none, validation_error, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Json, Path};
@@ -65,7 +65,7 @@ pub async fn edit_field(req: HttpRequest, data: Data<AppState>, path: Path<Custo
     body.id = field_id;
     body.user_id = token.user_id;
 
-    crate::database::fields::edit_field(&data.pool, &body).await.map_err(to_web_error)?;
+    crate::database::fields::edit_field(&*data.pool, &body).await.map_err(to_web_error)?;
     ok_none()
 }
 
@@ -131,7 +131,7 @@ pub async fn update_field_value(req: HttpRequest, data: Data<AppState>, path: Pa
     body.id = data_id;
     body.user_id = token.user_id;
 
-    crate::database::fields::update_field_value(&data.pool, &body).await.map_err(to_web_error)?;
+    crate::database::fields::edit_field_value(&*data.pool, &body).await.map_err(to_web_error)?;
     ok_none()
 }
 
