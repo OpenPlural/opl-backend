@@ -7,7 +7,8 @@ use crate::middleware::{get_token, RequestToken};
 use crate::model::front::{FrontEntry, FrontEntryId};
 use crate::model::sync_v2::{FrontSyncRequest, FrontSyncResponse, SyncIds, SyncRequest, SyncResponse, SyncUpdates, Syncable};
 use crate::model::user::{UserId, UserInfo};
-use crate::web::{not_found, ok, WebResult};
+use crate::model::Validator;
+use crate::web::{not_found, ok, WebResult, validation_error};
 
 #[post("/")]
 pub async fn sync_v2(req: HttpRequest, data: Data<AppState>, body: Json<SyncRequest>) -> WebResult {
@@ -20,6 +21,8 @@ pub async fn sync_v2(req: HttpRequest, data: Data<AppState>, body: Json<SyncRequ
         }
 
         let body = body.into_inner();
+        body.validate().map_err(validation_error)?;
+
         let resp = sync_all(&data.pool, user, friend_code, body).await.map_err(to_web_error)?;
         ok(resp)
     } else {
@@ -33,6 +36,8 @@ pub async fn sync_front(req: HttpRequest, data: Data<AppState>, body: Json<Front
     token.require_session()?;
 
     let body = body.into_inner();
+    body.validate().map_err(validation_error)?;
+
     let (assign_front, front) = do_sync_front(&data.pool, None, token.user_id, body.front).await.map_err(to_web_error)?;
     ok(FrontSyncResponse {
         assign_front,

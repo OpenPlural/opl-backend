@@ -7,6 +7,7 @@ use crate::model::gallery::{PhotoAlbum, PhotoAlbumId};
 use crate::model::member::{Member, MemberId};
 use crate::model::poll::{Poll, PollAnswer, PollAnswerId, PollId};
 use crate::model::user::{UserId, UserInfo};
+use crate::model::Validator;
 
 #[derive(Debug, Deserialize)]
 pub struct SyncRequest {
@@ -76,7 +77,35 @@ pub struct FrontSyncResponse {
     pub front: Vec<FrontEntry>,
 }
 
-pub trait Syncable {
+impl Validator for SyncUpdates {
+    fn validate(&self) -> Result<(), String> {
+        self.folders.iter().try_for_each(|folder| folder.validate())?;
+        self.members.iter().try_for_each(|member| member.validate())?;
+        self.fields.iter().try_for_each(|field| field.validate())?;
+        self.field_values.iter().try_for_each(|field| field.validate())?;
+        self.polls.iter().try_for_each(|poll| poll.validate())?;
+        self.poll_answers.iter().try_for_each(|poll| poll.validate())?;
+        self.photo_albums.iter().try_for_each(|photo| photo.validate())?;
+        Ok(())
+    }
+}
+
+impl Validator for SyncRequest {
+    fn validate(&self) -> Result<(), String> {
+        self.updated.validate()?;
+        self.front.iter().try_for_each(|entry| entry.validate())?;
+        Ok(())
+    }
+}
+
+impl Validator for FrontSyncRequest {
+    fn validate(&self) -> Result<(), String> {
+        self.front.iter().try_for_each(|entry| entry.validate())?;
+        Ok(())
+    }
+}
+
+pub trait Syncable: Validator {
     fn id(&self) -> i64;
     fn set_user(&mut self, user_id: UserId);
     fn updated_at(&self) -> &DateTime<Utc>;
