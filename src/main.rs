@@ -96,6 +96,11 @@ async fn main() -> std::io::Result<()> {
         }
     });
 
+    let port = var("BIND_PORT").ok()
+        .map(|s| s.parse::<u16>())
+        .transpose()
+        .expect("Failed to parse BIND_PORT")
+        .unwrap_or(11675);
     HttpServer::new(move || {
         App::new()
             .app_data(Data::new(AppState {
@@ -299,5 +304,5 @@ async fn main() -> std::io::Result<()> {
             )
             .service(version)
             .service(app_update)
-    }).bind(("0.0.0.0", 11675))?.run().await
+    }).bind(("0.0.0.0", port))?.run().await
 }
