@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
+use token_source::TokenSource;
 use tokio::spawn;
 use tokio::sync::{Mutex, OnceCell};
 use tokio::time::{interval, Instant};
@@ -24,7 +25,7 @@ pub async fn notify_front_change(user_id: UserId) {
     front_updates.insert(user_id, Instant::now());
 }
 
-pub async fn watch_front_changes(database_pool: DatabasePool) {
+pub async fn watch_front_changes(database_pool: DatabasePool, fcm_token: Arc<dyn TokenSource>) {
     spawn(async move {
         let front_updates = get_front_updates().await;
         let mut interval = interval(Duration::from_secs(2));
@@ -44,6 +45,16 @@ pub async fn watch_front_changes(database_pool: DatabasePool) {
                 }
             }
 
+            if updated_users.is_empty() {
+                continue;
+            }
+            let fcm_token = match fcm_token.token().await {
+                Ok(fcm_token) => fcm_token,
+                Err(err) => {
+                    eprintln!("FCM Token Error: {:?}", err);
+                    continue
+                },
+            };
             for user_id in updated_users {
                 if let Ok(Some(username)) = crate::database::user::get_username(&database_pool, user_id).await {
                     if let Ok(notified_friends) = crate::database::friend::get_notified_friend_ids(&database_pool, user_id).await {
@@ -61,7 +72,7 @@ pub async fn watch_front_changes(database_pool: DatabasePool) {
                                             None
                                         };
                                         let kind = format!("front/{user_id}");
-                                        let _ = crate::notification::notify_user(&database_pool, notify_user, &username, &front_text, &kind, tag).await;
+                                        let _ = crate::notification::notify_user(&database_pool, notify_user, &username, &front_text, &kind, tag, &fcm_token).await;
                                     }
                                 } else {
                                     let _ = crate::database::notification::clear_last_notification(&database_pool, user_id, notify_user).await;

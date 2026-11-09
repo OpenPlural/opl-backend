@@ -1,5 +1,6 @@
 #![feature(trait_alias)]
 
+use token_source::TokenSourceProvider;
 mod database;
 mod security;
 mod web;
@@ -33,6 +34,8 @@ use std::env::var;
 use std::sync::Arc;
 use std::time::Duration;
 use actix_web::middleware::from_fn;
+use gcloud_auth::project::Config;
+use gcloud_auth::token::DefaultTokenSourceProvider;
 use tokio::spawn;
 use tokio::time::interval;
 use crate::frontwatch::watch_front_changes;
@@ -46,7 +49,7 @@ use crate::web::api::cdn::{get_avatar, upload_avatar};
 use crate::web::api::export::export;
 use crate::web::api::fields::{clear_field_value, create_field, create_field_value, delete_field, edit_field, get_field, get_field_privacy, get_field_value, get_field_values, get_fields, get_specific_field_values, update_field_value};
 use crate::web::api::import::import;
-use crate::web::api::notification::subscribe;
+use crate::web::api::notification::{subscribe_web_push, subscribe_fcm};
 use crate::web::api::pluralkit::{get_pk_config, sync_pk, update_pk_config};
 use crate::web::api::poll::{create_poll, create_poll_answer, delete_poll, delete_poll_answer, edit_poll, edit_poll_answer, get_poll, get_poll_answers, get_polls};
 use crate::web::api::privacy::{add_privacy_bucket_custom_field, add_privacy_bucket_folder, add_privacy_bucket_friend, add_privacy_bucket_member, add_privacy_bucket_photo_album, create_privacy_bucket, delete_privacy_bucket, edit_privacy_bucket, get_privacy_bucket, get_privacy_buckets, remove_privacy_bucket_custom_field, remove_privacy_bucket_folder, remove_privacy_bucket_friend, remove_privacy_bucket_member, remove_privacy_bucket_photo_album, reorder_privacy_buckets};
@@ -72,8 +75,15 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to run database migrations");
 
+    let fcm_scopes = vec![
+        "https://www.googleapis.com/auth/firebase.messaging"
+    ];
+    let fcm_token = DefaultTokenSourceProvider::new(Config::default().with_scopes(&fcm_scopes)).await
+        .expect("Failed to create default token source for FCM");
+    let fcm_token = fcm_token.token_source();
+
     let db_pool = pool.clone();
-    watch_front_changes(db_pool.clone()).await;
+    watch_front_changes(db_pool.clone(), fcm_token).await;
     spawn(async move {
         let mut interval = interval(Duration::from_hours(6));
         loop {
@@ -213,7 +223,8 @@ async fn main() -> std::io::Result<()> {
                     )
                     .service(
                         scope("/notification")
-                            .service(subscribe)
+                            .service(subscribe_web_push)
+                            .service(subscribe_fcm)
                     )
                     .service(
                         scope("/pluralkit")
