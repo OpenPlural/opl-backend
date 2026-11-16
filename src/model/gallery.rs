@@ -1,14 +1,15 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use crate::model::validate_string_length;
+use crate::model::{validate_string_length, Validator};
 use crate::model::member::MemberId;
+use crate::model::sync_v2::Syncable;
 use crate::model::user::UserId;
 
 pub type PhotoAlbumId = i64;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhotoAlbum {
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub id: PhotoAlbumId,
     #[serde(skip)]
     pub user_id: UserId,
@@ -20,12 +21,26 @@ pub struct PhotoAlbum {
     pub description: Option<String>,
     #[serde(rename = "photoUrls")]
     pub photo_urls: Option<Vec<String>>,
-    #[serde(rename = "updatedAt", skip_deserializing)]
+    #[serde(rename = "updatedAt", default)]
     pub updated_at: DateTime<Utc>,
 }
 
-impl PhotoAlbum {
-    pub fn validate(&self) -> Result<(), String> {
+impl Syncable for PhotoAlbum {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn set_user(&mut self, user_id: UserId) {
+        self.user_id = user_id;
+    }
+
+    fn updated_at(&self) -> &DateTime<Utc> {
+        &self.updated_at
+    }
+}
+
+impl Validator for PhotoAlbum {
+    fn validate(&self) -> Result<(), String> {
         validate_string_length("PhotoAlbum", "name", &self.name, Some(1), Some(255), false)?;
         if let Some(description) = &self.description {
             validate_string_length("PhotoAlbum", "description", description, Some(1), Some(65535), true)?;

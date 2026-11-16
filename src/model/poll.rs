@@ -1,8 +1,9 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use crate::model::user::UserId;
-use crate::model::{validate_number_range, validate_string_length};
+use crate::model::{validate_number_range, validate_string_length, Validator};
 use crate::model::member::MemberId;
+use crate::model::sync_v2::Syncable;
 
 pub type PollId = i64;
 pub type PollAnswerId = i64;
@@ -11,7 +12,7 @@ pub const POLL_MAX_OPTIONS: usize = 16;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Poll {
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub id: PollId,
     #[serde(skip)]
     pub user_id: UserId,
@@ -23,7 +24,7 @@ pub struct Poll {
     pub allow_veto: bool,
     #[serde(rename = "openUntil")]
     pub open_until: DateTime<Utc>,
-    #[serde(rename = "updatedAt", skip_deserializing)]
+    #[serde(rename = "updatedAt", default)]
     pub updated_at: DateTime<Utc>,
     #[serde(rename = "customOptions", default)]
     pub custom_options: Option<Vec<String>>,
@@ -31,7 +32,7 @@ pub struct Poll {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PollAnswer {
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub id: PollAnswerId,
     #[serde(skip)]
     pub user_id: UserId,
@@ -42,12 +43,26 @@ pub struct PollAnswer {
     #[serde(deserialize_with = "crate::numberstring::deserialize")]
     pub answer: u8,
     pub comment: Option<String>,
-    #[serde(rename = "updatedAt", skip_deserializing)]
+    #[serde(rename = "updatedAt", default)]
     pub updated_at: DateTime<Utc>,
 }
 
-impl Poll {
-    pub fn validate(&self) -> Result<(), String> {
+impl Syncable for Poll {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn set_user(&mut self, user_id: UserId) {
+        self.user_id = user_id;
+    }
+
+    fn updated_at(&self) -> &DateTime<Utc> {
+        &self.updated_at
+    }
+}
+
+impl Validator for Poll {
+    fn validate(&self) -> Result<(), String> {
         validate_string_length("Poll", "name", &self.name, Some(1), Some(255), false)?;
         if let Some(description) = &self.description {
             validate_string_length("Poll", "description", description, Some(1), Some(65535), true)?;
@@ -60,8 +75,22 @@ impl Poll {
     }
 }
 
-impl PollAnswer {
-    pub fn validate(&self) -> Result<(), String> {
+impl Syncable for PollAnswer {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn set_user(&mut self, user_id: UserId) {
+        self.user_id = user_id;
+    }
+
+    fn updated_at(&self) -> &DateTime<Utc> {
+        &self.updated_at
+    }
+}
+
+impl Validator for PollAnswer {
+    fn validate(&self) -> Result<(), String> {
         if let Some(comment) = &self.comment {
             validate_string_length("PollAnswer", "comment", comment, Some(1), Some(255), true)?;
         }

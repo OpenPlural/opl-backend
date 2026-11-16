@@ -21,6 +21,7 @@ pub mod analytics;
 pub mod gallery;
 pub mod cdn;
 pub mod pluralkit;
+pub mod sync_v2;
 
 #[derive(Debug, Deserialize)]
 pub struct PageQuery {
@@ -37,6 +38,10 @@ pub struct DateRangeQuery {
 #[derive(Debug, Serialize)]
 pub struct IdResponse<T: Serialize> {
     pub id: T,
+}
+
+pub trait Validator {
+    fn validate(&self) -> Result<(), String>;
 }
 
 pub(in crate::model) fn validate_string_length(model_name: &str, field_name: &str, str: &str, min_length: Option<usize>, max_length: Option<usize>, nullable: bool) -> Result<(), String> {

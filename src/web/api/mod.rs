@@ -15,3 +15,4 @@ pub mod poll;
 pub mod analytics;
 pub mod cdn;
 pub mod pluralkit;
+pub mod sync_v2;

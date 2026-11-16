@@ -1,14 +1,15 @@
 use crate::model::folder::{FolderId, ViewedFolder};
 use crate::model::user::UserId;
-use crate::model::{validate_color_range, validate_string_length};
+use crate::model::{validate_color_range, validate_string_length, Validator};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use crate::model::sync_v2::Syncable;
 
 pub type MemberId = i64;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Member {
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub id: MemberId,
     #[serde(skip)]
     pub user_id: UserId,
@@ -27,9 +28,9 @@ pub struct Member {
     pub custom: bool,
     #[serde(rename = "createdAt", skip_deserializing)]
     pub created_at: DateTime<Utc>,
-    #[serde(rename = "updatedAt", skip_deserializing)]
+    #[serde(rename = "updatedAt", default)]
     pub updated_at: DateTime<Utc>,
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub folders: Vec<FolderId>,
 }
 
@@ -64,8 +65,22 @@ impl From<Member> for ViewedMember {
     }
 }
 
-impl Member {
-    pub fn validate(&self) -> Result<(), String> {
+impl Syncable for Member {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn set_user(&mut self, user_id: UserId) {
+        self.user_id = user_id;
+    }
+
+    fn updated_at(&self) -> &DateTime<Utc> {
+        &self.updated_at
+    }
+}
+
+impl Validator for Member {
+    fn validate(&self) -> Result<(), String> {
         if let Some(pk_id) = &self.pk_id {
             validate_string_length("Member", "pkId", pk_id, Some(1), Some(6), true)?;
         }

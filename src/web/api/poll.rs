@@ -3,7 +3,7 @@ use actix_web::web::{Data, Json, Path};
 use crate::AppState;
 use crate::database::to_web_error;
 use crate::middleware::get_token;
-use crate::model::IdResponse;
+use crate::model::{IdResponse, Validator};
 use crate::model::poll::{Poll, PollAnswer, PollAnswerId, PollId};
 use crate::web::{not_found, ok, ok_none, validation_error, WebResult};
 
@@ -65,7 +65,7 @@ pub async fn edit_poll(req: HttpRequest, data: Data<AppState>, path: Path<PollId
     body.id = poll_id;
     body.user_id = token.user_id;
 
-    crate::database::poll::edit_poll(&data.pool, &body).await.map_err(to_web_error)?;
+    crate::database::poll::edit_poll(&*data.pool, &body).await.map_err(to_web_error)?;
     ok_none()
 }
 
@@ -115,6 +115,6 @@ pub async fn edit_poll_answer(req: HttpRequest, data: Data<AppState>, path: Path
     body.id = answer_id;
     body.user_id = token.user_id;
 
-    crate::database::poll::edit_poll_answer(&data.pool, &body).await.map_err(to_web_error)?;
+    crate::database::poll::edit_poll_answer(&*data.pool, &body).await.map_err(to_web_error)?;
     ok_none()
 }

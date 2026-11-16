@@ -5,7 +5,7 @@ use crate::model::friend::PERMISSION_LEVEL_MEMBERS;
 use crate::model::gallery::{PhotoAlbum, PhotoAlbumId};
 use crate::model::member::{ExtendedViewedMember, Member, MemberId, MemberQuery, ViewedMember};
 use crate::model::user::UserFilter;
-use crate::model::{IdResponse, PageQuery};
+use crate::model::{IdResponse, PageQuery, Validator};
 use crate::web::{not_found, ok, ok_none, validation_error, WebResult};
 use crate::AppState;
 use actix_web::web::{Data, Json, Path, Query};
@@ -213,7 +213,7 @@ pub async fn edit_photo_album(req: HttpRequest, data: Data<AppState>, path: Path
     body.user_id = token.user_id;
     body.member_id = member_id;
 
-    crate::database::gallery::edit_photo_album(&data.pool, &body).await.map_err(to_web_error)?;
+    crate::database::gallery::edit_photo_album(&*data.pool, &body).await.map_err(to_web_error)?;
     ok_none()
 }
 

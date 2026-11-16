@@ -2,13 +2,13 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use crate::model::member::MemberId;
 use crate::model::user::UserId;
-use crate::model::validate_string_length;
+use crate::model::{validate_string_length, Validator};
 
 pub type FrontEntryId = i64;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FrontEntry {
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub id: FrontEntryId,
     #[serde(skip)]
     pub user_id: UserId,
@@ -19,12 +19,12 @@ pub struct FrontEntry {
     #[serde(rename = "endedAt")]
     pub ended_at: Option<DateTime<Utc>>,
     pub comment: Option<String>,
-    #[serde(rename = "updatedAt", skip_deserializing)]
+    #[serde(rename = "updatedAt", default)]
     pub updated_at: DateTime<Utc>,
 }
 
-impl FrontEntry {
-    pub fn validate(&self) -> Result<(), String> {
+impl Validator for FrontEntry {
+    fn validate(&self) -> Result<(), String> {
         if let Some(comment) = &self.comment {
             validate_string_length("FrontEntry", "comment", comment, Some(1), Some(255), true)?;
         }

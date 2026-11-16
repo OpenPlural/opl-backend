@@ -1,12 +1,12 @@
 use std::collections::HashMap;
-use sqlx::Arguments;
+use sqlx::{Arguments, Executor};
 use anyhow::anyhow;
-use crate::database::{assert_sql_safe, list_to_map, DatabasePool, DatabaseResult};
+use crate::database::{assert_sql_safe, DatabaseExecutor, list_to_map, DatabasePool, DatabaseResult};
 use crate::model::front::{FrontEntry, FrontEntryId};
 use crate::model::user::{UserId, UserInfo};
 use chrono::{DateTime, Utc};
 use sqlx::mysql::{MySqlArguments, MySqlRow};
-use sqlx::{query, Executor, Row, Statement};
+use sqlx::{query, Row, Statement};
 use crate::model::friend::Friend;
 use crate::model::member::MemberId;
 
@@ -204,14 +204,14 @@ pub async fn is_fronting(pool: &DatabasePool, user_id: UserId, member_id: Member
     Ok(res.is_some())
 }
 
-pub async fn add_front_entry(pool: &DatabasePool, entry: &FrontEntry) -> DatabaseResult<FrontEntryId> {
+pub async fn add_front_entry<'a, E: crate::database::DatabaseExecutor<'a>>(executor: E, entry: &FrontEntry) -> DatabaseResult<FrontEntryId> {
     let id = query("INSERT INTO Front (UserId, MemberId, StartedAt, EndedAt, Comment) VALUES (?, ?, ?, ?, ?) RETURNING ID")
         .bind(entry.user_id)
         .bind(entry.member_id)
         .bind(entry.started_at)
         .bind(entry.ended_at)
         .bind(entry.comment.clone())
-        .fetch_one(pool.as_ref())
+        .fetch_one(executor)
         .await?;
 
     Ok(id.get(0))
@@ -227,7 +227,7 @@ pub async fn delete_front_entry(pool: &DatabasePool, entry_id: FrontEntryId, use
     Ok(())
 }
 
-pub async fn edit_front_entry(pool: &DatabasePool, entry: &FrontEntry) -> DatabaseResult<()> {
+pub async fn edit_front_entry<'a, E: DatabaseExecutor<'a>>(executor: E, entry: &FrontEntry) -> DatabaseResult<()> {
     query("UPDATE Front SET MemberId = ?, StartedAt = ?, EndedAt = ?, Comment = ? WHERE ID = ? AND UserId = ?")
         .bind(entry.member_id)
         .bind(entry.started_at)
@@ -235,7 +235,7 @@ pub async fn edit_front_entry(pool: &DatabasePool, entry: &FrontEntry) -> Databa
         .bind(entry.comment.clone())
         .bind(entry.id)
         .bind(entry.user_id)
-        .execute(pool.as_ref())
+        .execute(executor)
         .await?;
 
     Ok(())
