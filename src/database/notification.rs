@@ -1,16 +1,27 @@
 use sqlx::{query, Row};
 use crate::database::{DatabasePool, DatabaseResult};
-use crate::model::notification::{PushSubscription, PushSubscriptionKeys};
+use crate::model::notification::{FCMSubscription, PushSubscription, WebPushSubscription, WebPushSubscriptionKeys};
 use crate::model::session::SessionId;
 use crate::model::user::UserId;
 
-pub async fn add_subscription(pool: &DatabasePool, user_id: UserId, session_id: SessionId, push_subscription: &PushSubscription) -> DatabaseResult<()> {
-    query("INSERT IGNORE INTO Notification (UserId, SessionId, Endpoint, p256dh, auth) VALUES (?, ?, ?, ?, ?)")
+pub async fn add_web_push_subscription(pool: &DatabasePool, user_id: UserId, session_id: SessionId, push_subscription: &WebPushSubscription) -> DatabaseResult<()> {
+    query("INSERT INTO WebPushSubscription (UserId, SessionId, Endpoint, p256dh, auth) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE Endpoint = VALUES(Endpoint), p256dh = VALUES(p256dh), auth = VALUES(auth)")
         .bind(user_id)
         .bind(session_id)
         .bind(&push_subscription.endpoint)
         .bind(&push_subscription.keys.p256dh)
         .bind(&push_subscription.keys.auth)
+        .execute(pool.as_ref())
+        .await?;
+
+    Ok(())
+}
+
+pub async fn add_fcm_subscription(pool: &DatabasePool, user_id: UserId, session_id: SessionId, push_subscription: &FCMSubscription) -> DatabaseResult<()> {
+    query("INSERT INTO FCMSubscription (UserId, SessionId, InstallationId) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE InstallationId = VALUES(InstallationId)")
+        .bind(user_id)
+        .bind(session_id)
+        .bind(&push_subscription.installation_id)
         .execute(pool.as_ref())
         .await?;
 
@@ -47,8 +58,17 @@ pub async fn clear_last_notification(pool: &DatabasePool, fronting_user_id: User
     Ok(())
 }
 
-pub async fn remove_subscription(pool: &DatabasePool, id: i64) -> DatabaseResult<()> {
-    query("DELETE FROM Notification WHERE ID = ?")
+pub async fn remove_web_push_subscription(pool: &DatabasePool, id: i64) -> DatabaseResult<()> {
+    query("DELETE FROM WebPushSubscription WHERE ID = ?")
+        .bind(id)
+        .execute(pool.as_ref())
+        .await?;
+
+    Ok(())
+}
+
+pub async fn remove_fcm_subscription(pool: &DatabasePool, id: i64) -> DatabaseResult<()> {
+    query("DELETE FROM FCMSubscription WHERE ID = ?")
         .bind(id)
         .execute(pool.as_ref())
         .await?;
@@ -57,17 +77,28 @@ pub async fn remove_subscription(pool: &DatabasePool, id: i64) -> DatabaseResult
 }
 
 pub async fn get_subscriptions(pool: &DatabasePool, user_id: UserId) -> DatabaseResult<Vec<PushSubscription>> {
-    let subscriptions = query("SELECT ID, Endpoint, p256dh, auth FROM Notification WHERE UserId = ?")
+    let subscriptions = query("SELECT ID, 'WebPush' as Type, Endpoint, p256dh, auth FROM WebPushSubscription WHERE UserId = ? UNION SELECT ID, 'FCM' as Type, InstallationId AS Endpoint, '' as p256dh, '' as auth FROM FCMSubscription WHERE UserId = ?")
+        .bind(user_id)
         .bind(user_id)
         .fetch_all(pool.as_ref())
         .await?;
 
-    Ok(subscriptions.into_iter().map(|row| PushSubscription {
-        id: row.get("ID"),
-        endpoint: row.get("Endpoint"),
-        keys: PushSubscriptionKeys {
-            p256dh: row.get("p256dh"),
-            auth: row.get("auth"),
-        },
+    Ok(subscriptions.into_iter().map(|row| {
+        let r#type = row.get("Type");
+        match r#type {
+            "WebPush" => PushSubscription::WebPush(WebPushSubscription {
+                id: row.get("ID"),
+                endpoint: row.get("Endpoint"),
+                keys: WebPushSubscriptionKeys {
+                    p256dh: row.get("p256dh"),
+                    auth: row.get("auth"),
+                },
+            }),
+            "FCM" => PushSubscription::FCM(FCMSubscription {
+                id: row.get("ID"),
+                installation_id: row.get("Endpoint")
+            }),
+            _ => unreachable!()
+        }
     }).collect())
 }

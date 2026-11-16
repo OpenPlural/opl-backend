@@ -1,15 +1,20 @@
+use chrono::Utc;
+use reqwest::{Client, StatusCode};
 use serde_json::json;
 use tokio::sync::OnceCell;
 use web_push::{ContentEncoding, IsahcWebPushClient, SubscriptionInfo, SubscriptionKeys, VapidSignatureBuilder, WebPushClient, WebPushError, WebPushMessageBuilder};
 use crate::database::DatabasePool;
 use crate::error::WebError;
+use crate::model::notification::PushSubscription;
 use crate::model::user::UserId;
 
 const WEB_PUSH_VAPID_PRIVATE_KEY: &'static str = env!("WEB_PUSH_VAPID_PRIVATE_KEY_BASE64");
 const WEB_PUSH_VAPID_SUB: &'static str = env!("WEB_PUSH_VAPID_SUB");
+const FCM_PROJECT_ID: &'static str = env!("FCM_PROJECT_ID");
 
 static WEB_PUSH_CLIENT: OnceCell<IsahcWebPushClient> = OnceCell::const_new();
 static WEB_PUSH_TRUSTED_ENDPOINTS: OnceCell<Vec<&'static str>> = OnceCell::const_new();
+static REQWEST_CLIENT: OnceCell<Client> = OnceCell::const_new();
 
 async fn get_web_push_client() -> &'static IsahcWebPushClient {
     WEB_PUSH_CLIENT.get_or_init(|| async {
@@ -20,6 +25,12 @@ async fn get_web_push_client() -> &'static IsahcWebPushClient {
 async fn get_trusted_endpoints() -> &'static Vec<&'static str> {
     WEB_PUSH_TRUSTED_ENDPOINTS.get_or_init(|| async {
         env!("WEB_PUSH_TRUSTED_ENDPOINTS").split(",").collect()
+    }).await
+}
+
+async fn get_reqwest_client() -> &'static Client {
+    REQWEST_CLIENT.get_or_init(|| async {
+        Client::new()
     }).await
 }
 
@@ -45,13 +56,24 @@ pub async fn notify_user(
     body: &str,
     kind: &str,
     tag: Option<String>,
+    fcm_token: &str,
 ) -> Result<(), anyhow::Error> {
-    if cfg!(not(debug_assertions)) {
-        let subscriptions = crate::database::notification::get_subscriptions(pool, user_id).await?;
-        for subscription in subscriptions {
-            if let Err(err) = send_push_notification(subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth, title, body, kind, &tag).await {
-                if matches!(err, WebPushError::InvalidUri | WebPushError::EndpointNotValid(_) | WebPushError::EndpointNotFound(_)) {
-                    let _ = crate::database::notification::remove_subscription(pool, subscription.id).await?;
+    let id = (Utc::now().timestamp() - 1700000000) as i32;
+    let subscriptions = crate::database::notification::get_subscriptions(pool, user_id).await?;
+    for subscription in subscriptions {
+        match subscription {
+            PushSubscription::WebPush(subscription) => {
+                if let Err(err) = send_web_push_notification(subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth, title, body, kind, &tag).await {
+                    if matches!(err, WebPushError::InvalidUri | WebPushError::EndpointNotValid(_) | WebPushError::EndpointNotFound(_)) {
+                        let _ = crate::database::notification::remove_web_push_subscription(pool, subscription.id).await;
+                    }
+                }
+            }
+            PushSubscription::FCM(subscription) => {
+                if let Err(err_code) = send_fcm_notification(fcm_token, subscription.installation_id, title, body, &tag, id).await {
+                    if let Some(err_code) = err_code && err_code.as_u16() == 404 {
+                        let _ = crate::database::notification::remove_fcm_subscription(pool, subscription.id).await;
+                    }
                 }
             }
         }
@@ -59,7 +81,7 @@ pub async fn notify_user(
     Ok(())
 }
 
-async fn send_push_notification(
+async fn send_web_push_notification(
     endpoint: String,
     p256dh: String,
     auth: String,
@@ -97,6 +119,55 @@ async fn send_push_notification(
 
     let client = get_web_push_client().await;
     client.send(request).await?;
+
+    Ok(())
+}
+
+pub async fn send_fcm_notification(
+    fcm_token: &str,
+    installation_id: String,
+    title: &str,
+    body: &str,
+    tag: &Option<String>,
+    id: i32,
+) -> Result<(), Option<StatusCode>> {
+    let id = Some(id).filter(|_| tag.is_some());
+    let request = json!({
+        "message": {
+            "fid": installation_id,
+            "notification": {
+                "title": title,
+                "body": body,
+            },
+            "android_v2": {
+                "ttl": "1800s",
+                "bandwidth_constrained_ok": true,
+                "restricted_satellite_ok": true,
+                "remote_notification": {
+                    "mutable_content": false,
+                    "notification": {
+                        "title": title,
+                        "body": body,
+                        "sound": "default",
+                        "tag": tag,
+                        "id": id,
+                    }
+                }
+            }
+        }
+    });
+
+    let client = get_reqwest_client().await;
+    let res = client.post(format!("https://fcm.googleapis.com/v1/projects/{FCM_PROJECT_ID}/messages:send"))
+        .json(&request)
+        .header("Authorization", fcm_token)
+        .send()
+        .await
+        .map_err(|err| err.status())?;
+    let status = res.status();
+    if !status.is_success() {
+        return Err(Some(status));
+    }
 
     Ok(())
 }

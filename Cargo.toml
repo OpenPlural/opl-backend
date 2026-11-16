@@ -16,6 +16,8 @@ anyhow = "~1.0"
 thiserror = "~2.0"
 strum_macros = "~0.28"
 web-push = "~0.11"
+gcloud-auth = "~1.4"
+token-source = "~1.0"
 
 [dependencies.uuid]
 version = "~1.29"
@@ -32,6 +34,10 @@ features = ["mysql", "runtime-tokio", "chrono", "uuid", "migrate"]
 [dependencies.tokio]
 version = "~1.54"
 features = ["macros", "rt-multi-thread"]
+
+[dependencies.reqwest]
+version = "~0.13"
+features = ["json"]
 
 [dependencies.pluralkit]
 version = "~0.1.5"
